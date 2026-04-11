@@ -129,13 +129,27 @@ def password_reset_confirm_view(request):
 
 class UserListCreateView(generics.ListCreateAPIView):
     """Admin lista e cria usuários."""
-    queryset = CustomUser.objects.all().order_by("nome")
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ["nome", "email", "role"]
-    ordering_fields = ["nome", "email", "role", "date_joined"]
+    search_fields = ["nome", "email"]
+    ordering_fields = ["nome", "email", "date_joined"]
+
+    def get_queryset(self):
+        from django.db.models import Q
+        qs = CustomUser.objects.prefetch_related(
+            "medico", "funcionario"
+        ).order_by("nome")
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            statuses = [s.strip() for s in status_param.split(",") if s.strip()]
+            qs = qs.filter(
+                Q(medico__status__in=statuses) | Q(funcionario__status__in=statuses)
+            ).distinct()
+        return qs
 
     def get_permissions(self):
-        from medicos.permissions import IsAdminOnly
+        from medicos.permissions import IsAdminOnly, IsGestorOrAdmin
+        if self.request.method == "POST":
+            return [IsAuthenticated(), IsGestorOrAdmin()]
         return [IsAuthenticated(), IsAdminOnly()]
 
     def get_serializer_class(self):
@@ -170,5 +184,28 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
                 {"detail": "Você não pode excluir sua própria conta."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+        perfil_status = self._get_perfil_status(instance)
+        if perfil_status != "inativo":
+            return Response(
+                {"detail": "Apenas usuários com status inativo podem ser excluídos."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        # Apaga o cadastro médico vinculado antes de apagar o usuário
+        try:
+            instance.medico.delete()
+        except Exception:
+            pass
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @staticmethod
+    def _get_perfil_status(user):
+        try:
+            return user.medico.status
+        except Exception:
+            pass
+        try:
+            return user.funcionario.status
+        except Exception:
+            pass
+        return None

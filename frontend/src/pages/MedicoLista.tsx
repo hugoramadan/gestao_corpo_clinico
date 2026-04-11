@@ -1,22 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getMedicos } from '../api/medicos';
-import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
-import type { MedicoListItem } from '../types';
+import type { MedicoListItem, Status } from '../types';
+import { mediaUrl } from '../utils/media';
 
-const STATUS_COLORS = {
+const STATUS_COLORS: Record<Status, string> = {
   ativo: 'bg-green-100 text-green-700',
   inativo: 'bg-red-100 text-red-600',
   pendente: 'bg-yellow-100 text-yellow-700',
 };
 
+const STATUS_OPTIONS: { value: Status; label: string }[] = [
+  { value: 'ativo', label: 'Ativo' },
+  { value: 'pendente', label: 'Pendente' },
+  { value: 'inativo', label: 'Inativo' },
+];
+
 export default function MedicoLista() {
-  const { isRole } = useAuth();
   const [medicos, setMedicos] = useState<MedicoListItem[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<Status[]>(['ativo', 'pendente']);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 400);
@@ -25,35 +31,49 @@ export default function MedicoLista() {
 
   useEffect(() => {
     setLoading(true);
-    getMedicos(debouncedSearch)
+    getMedicos(debouncedSearch, selectedStatus)
       .then(setMedicos)
       .finally(() => setLoading(false));
-  }, [debouncedSearch]);
+  }, [debouncedSearch, selectedStatus]);
+
+  const toggleStatus = (s: Status) => {
+    setSelectedStatus((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    );
+  };
 
   return (
     <div className="min-h-screen bg-slate-100">
       <Navbar />
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <div className="mb-6">
           <h2 className="text-2xl font-bold text-slate-800">Médicos Cadastrados</h2>
-          {isRole('admin') && (
-            <Link
-              to="/medicos/novo"
-              className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              + Novo Médico
-            </Link>
-          )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <input
             type="text"
             placeholder="Buscar por nome, CPF, CRM ou e-mail..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs text-slate-500 font-medium">Status:</span>
+            {STATUS_OPTIONS.map(({ value, label }) => (
+              <label key={value} className="flex items-center gap-1.5 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedStatus.includes(value)}
+                  onChange={() => toggleStatus(value)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_COLORS[value]}`}>
+                  {label}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -83,16 +103,14 @@ export default function MedicoLista() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {m.foto_perfil ? (
-                          <img src={m.foto_perfil} alt="" className="w-8 h-8 rounded-full object-cover" />
+                          <img src={mediaUrl(m.foto_perfil)} alt="" className="w-8 h-8 rounded-full object-cover" />
                         ) : (
                           <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-400 text-xs">👤</div>
                         )}
                         <span className="font-medium text-slate-800">{m.nome_completo}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {m.crm_numero}/{m.crm_estado}
-                    </td>
+                    <td className="px-4 py-3 text-slate-600">{m.crm_numero}/{m.crm_estado}</td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex flex-wrap gap-1">
                         {m.especialidades.slice(0, 2).map((e) => (
@@ -112,10 +130,7 @@ export default function MedicoLista() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Link
-                        to={`/medicos/${m.id}`}
-                        className="text-blue-600 hover:underline text-sm"
-                      >
+                      <Link to={`/medicos/${m.id}`} className="text-blue-600 hover:underline text-sm">
                         Ver
                       </Link>
                     </td>

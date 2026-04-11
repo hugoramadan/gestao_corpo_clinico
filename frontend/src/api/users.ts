@@ -4,21 +4,27 @@ import type { User } from '../types';
 export interface UserCreatePayload {
   nome: string;
   email: string;
-  role: string;
+  roles: string[];
   password: string;
   cpf?: string;
+  data_nascimento?: string;
+  email_contato?: string;
 }
 
 export interface UserEditPayload {
   nome?: string;
   email?: string;
-  role?: string;
+  roles?: string[];
   is_active?: boolean;
   new_password?: string;
 }
 
-export const getUsers = (search?: string) =>
-  api.get<User[]>('/users/', { params: search ? { search } : {} }).then((r) => r.data);
+export const getUsers = (search?: string, status?: string[]) => {
+  const params: Record<string, string> = {};
+  if (search) params.search = search;
+  if (status && status.length > 0) params.status = status.join(',');
+  return api.get<User[]>('/users/', { params }).then((r) => r.data);
+};
 
 export const getUser = (id: number) =>
   api.get<User>(`/users/${id}/`).then((r) => r.data);

@@ -4,18 +4,27 @@ export interface AuthUser {
   id: number;
   nome: string;
   email: string;
-  role: Role;
+  roles: Role[];
   must_change_password: boolean;
+}
+
+export interface Funcionario {
+  cpf: string | null;
+  data_nascimento: string | null;
+  email: string;
+  status: 'ativo' | 'inativo';
 }
 
 export interface User {
   id: number;
   nome: string;
   email: string;
-  role: Role;
+  roles: Role[];
   is_active: boolean;
   date_joined: string;
   must_change_password: boolean;
+  funcionario: Funcionario | null;
+  status: 'ativo' | 'inativo' | 'pendente' | null;
 }
 
 export type Status = 'pendente' | 'ativo' | 'inativo';
@@ -48,6 +57,7 @@ export type EstadoCivil =
 
 export interface Medico {
   id: number;
+  user_id: number | null;
   nome_completo: string;
   cpf: string;
   data_nascimento: string;

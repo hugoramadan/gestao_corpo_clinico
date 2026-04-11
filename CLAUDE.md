@@ -17,15 +17,16 @@
 
 ```
 backend/
-  accounts/       — CustomUser, autenticação, gestão de usuários
+  accounts/       — CustomUser, Funcionario, autenticação, gestão de usuários
   medicos/        — Medico, Especialidade, MedicoEspecialidade (comprovantes)
-  core/           — urls.py principal
+  core/           — urls.py principal, configuracao.py (Configuracao + views)
 frontend/src/
-  api/            — axios.ts (interceptor JWT), medicos.ts, users.ts
-  contexts/       — AuthContext (login, logout, isRole, refreshUser)
+  api/            — axios.ts (interceptor JWT), medicos.ts, users.ts, config.ts
+  contexts/       — AuthContext (login, logout, isRole, refreshUser), ConfigContext
   components/     — Navbar, ProtectedRoute, MedicoForm, FileUploadField
   pages/          — todas as páginas (ver lista abaixo)
   types/          — index.ts (AuthUser, User, Medico, etc.)
+  utils/          — media.ts (mediaUrl: corrige URLs absolutas do backend)
 ```
 
 ---
@@ -45,6 +46,7 @@ frontend/src/
 | `/usuarios` | UsuarioLista.tsx | admin |
 | `/usuarios/novo` | UsuarioNovo.tsx | admin |
 | `/usuarios/:id/editar` | UsuarioEditar.tsx | admin |
+| `/configuracoes` | Configuracoes.tsx | admin |
 
 > **Removida:** `/medicos/novo` — criação de médico agora é exclusivamente via `/usuarios/novo` (role=medico).
 
@@ -76,18 +78,40 @@ frontend/src/
 | GET/POST | `` | Lista / cria usuário (POST role=medico cria User+Medico atomicamente) |
 | GET/PATCH/DELETE | `{id}/` | Detalhe / edição / exclusão (admin não pode se auto-excluir — HTTP 403) |
 
+### Configuração (`/api/config/`)
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `` | Retorna configuração atual — **público** (sem autenticação) |
+| PATCH | `` | Atualiza configuração — admin only; aceita `multipart/form-data` (logo) |
+
+> A configuração é um **singleton** (pk=1). Campos: `nome`, `subtitulo`, `cor_primaria`, `logo`. Para remover a logo, enviar `remover_logo=1` no payload.
+
 ---
 
 ## Modelos importantes
 
 ### CustomUser (`accounts/models.py`)
 - Login por e-mail (não username)
-- `role`: `medico` | `gestor` | `admin`
+- `roles`: `JSONField` — lista de perfis. Ex: `["medico"]`, `["admin", "medico"]`, `["gestor", "medico"]`
+  - Valores válidos: `medico`, `gestor`, `admin`
+  - Um usuário pode ter múltiplos perfis simultaneamente
 - `must_change_password: BooleanField(default=False)` — `True` em usuários criados por admin
+
+### Funcionario (`accounts/models.py`)
+- Perfil básico para usuários sem papel de médico (gestores, admins)
+- `user`: OneToOneField para CustomUser
+- `cpf`: `null=True, blank=True, unique=True`
+- `data_nascimento`, `email`, `status` (`ativo` / `inativo`)
+- Criado automaticamente para cada usuário existente que não seja médico (migration 0005)
 
 ### Medico (`medicos/models.py`)
 - `user`: FK para CustomUser (nullable — médicos sem login têm `user=null`)
 - `cpf`: `null=True, blank=True, unique=True` — admin pode criar sem CPF; NULL não colide com UNIQUE
+
+### Configuracao (`core/configuracao.py`)
+- Singleton (pk=1) — acessado via `Configuracao.get()`
+- `nome`, `subtitulo`, `cor_primaria` (hex), `logo` (ImageField)
+- Cor primária é aplicada como CSS variable `--color-primary` pelo `ConfigContext` no frontend
 
 ---
 
@@ -97,7 +121,7 @@ frontend/src/
 - **Senha provisória:** Todo usuário criado por admin recebe `must_change_password=True`. Auto-registro recebe `False`.
 - **Troca forçada:** `ProtectedRoute` redireciona qualquer rota para `/trocar-senha` se `must_change_password=True`. Após trocar, `must_change_password` é setado para `False`.
 - **Auto-exclusão bloqueada:** Admin não pode excluir a própria conta. Implementado em duas camadas: backend (HTTP 403 em `UserDetailView.destroy()`) e frontend (guard no `handleDelete` + botão oculto).
-- **Auto-edição restrita:** `UserManagementSerializer` impede que o usuário altere seu próprio `role` ou `is_active`.
+- **Auto-edição restrita:** `UserManagementSerializer` impede que o usuário altere seus próprios `roles` ou `is_active`.
 
 ---
 
@@ -107,8 +131,12 @@ frontend/src/
 |---|---|
 | accounts | 0001_initial |
 | accounts | 0002_must_change_password |
+| accounts | 0003_roles_field (role → roles JSONField + data migration) |
+| accounts | 0004_funcionario_model (cria model Funcionario) |
+| accounts | 0005_criar_funcionarios_existentes (data migration: cria Funcionario para users existentes) |
 | medicos | 0001..0007 (legado) |
 | medicos | 0008_cpf_nullable |
+| core | 0001_configuracao (cria model Configuracao singleton) |
 
 ---
 

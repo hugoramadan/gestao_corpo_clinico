@@ -1,10 +1,10 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import type { AuthUser } from '../types';
+import type { Role } from '../types';
 
 interface Props {
   children: React.ReactNode;
-  roles?: AuthUser['role'][];
+  roles?: Role[];
 }
 
 export default function ProtectedRoute({ children, roles }: Props) {
@@ -26,7 +26,7 @@ export default function ProtectedRoute({ children, roles }: Props) {
     return <Navigate to="/trocar-senha" replace />;
   }
 
-  if (roles && !roles.includes(user.role)) {
+  if (roles && !roles.some((r) => user.roles.includes(r))) {
     return <Navigate to="/dashboard" replace />;
   }
 

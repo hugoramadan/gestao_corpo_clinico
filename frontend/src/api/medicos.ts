@@ -1,8 +1,12 @@
 import api from './axios';
 import type { Medico, MedicoListItem, Especialidade, MedicoEspecialidade } from '../types';
 
-export const getMedicos = (search?: string) =>
-  api.get<MedicoListItem[]>('/medicos/', { params: { search } }).then((r) => r.data);
+export const getMedicos = (search?: string, status?: string[]) => {
+  const params: Record<string, string> = {};
+  if (search) params.search = search;
+  if (status && status.length > 0) params.status = status.join(',');
+  return api.get<MedicoListItem[]>('/medicos/', { params }).then((r) => r.data);
+};
 
 export const getMedico = (id: number) =>
   api.get<Medico>(`/medicos/${id}/`).then((r) => r.data);

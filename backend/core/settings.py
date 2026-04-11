@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     # Local
     "accounts",
     "medicos",
+    "core",
 ]
 
 MIDDLEWARE = [

@@ -1,13 +1,13 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../api/axios';
-import type { AuthUser } from '../types';
+import type { AuthUser, Role } from '../types';
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => void;
-  isRole: (...roles: AuthUser['role'][]) => boolean;
+  isRole: (...roles: Role[]) => boolean;
   refreshUser: () => Promise<void>;
 }
 
@@ -51,8 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data);
   };
 
-  const isRole = (...roles: AuthUser['role'][]) =>
-    !!user && roles.includes(user.role);
+  const isRole = (...roles: Role[]) =>
+    !!user && roles.some((r) => user.roles.includes(r));
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, isRole, refreshUser }}>
