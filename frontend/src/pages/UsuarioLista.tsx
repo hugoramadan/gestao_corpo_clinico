@@ -17,32 +17,69 @@ const ROLE_COLOR: Record<string, string> = {
   admin: 'bg-red-100 text-red-700',
 };
 
+const STATUS_OPTIONS = [
+  { value: 'ativo', label: 'Ativo', color: 'bg-green-100 text-green-700' },
+  { value: 'pendente', label: 'Pendente', color: 'bg-yellow-100 text-yellow-700' },
+  { value: 'inativo', label: 'Inativo', color: 'bg-red-100 text-red-600' },
+];
+
+function RoleBadges({ roles }: { roles: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1">
+      {(roles || []).map((r) => (
+        <span key={r} className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLOR[r] ?? 'bg-slate-100 text-slate-600'}`}>
+          {ROLE_LABEL[r] ?? r}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+
 export default function UsuarioLista() {
   const { user: me } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['ativo', 'pendente']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const data = await getUsers(search || undefined);
+      const data = await getUsers(debouncedSearch || undefined, selectedStatus);
       setUsers(data);
     } catch {
       setError('Não foi possível carregar os usuários.');
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [debouncedSearch, selectedStatus]);
 
   useEffect(() => {
-    const timer = setTimeout(() => fetchUsers(), 300);
-    return () => clearTimeout(timer);
+    fetchUsers();
   }, [fetchUsers]);
 
+  const toggleStatus = (s: string) => {
+    setSelectedStatus((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    );
+  };
+
+  const canDelete = (u: User) => {
+    if (u.id === me?.id) return false;
+    return u.status === 'inativo';
+  };
+
   const handleDelete = async (u: User) => {
-    if (u.id === me?.id) return; // nunca exclui a si mesmo
+    if (!canDelete(u)) return;
     if (!confirm(`Excluir usuário "${u.nome}"? Esta ação não pode ser desfeita.`)) return;
     try {
       await deleteUser(u.id);
@@ -66,14 +103,30 @@ export default function UsuarioLista() {
           </Link>
         </div>
 
-        <div className="mb-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-col sm:flex-row gap-4 items-start sm:items-center">
           <input
             type="text"
-            placeholder="Buscar por nome, e-mail ou perfil..."
+            placeholder="Buscar por nome ou e-mail..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full max-w-sm border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-xs text-slate-500 font-medium">Status:</span>
+            {STATUS_OPTIONS.map(({ value, label, color }) => (
+              <label key={value} className="flex items-center gap-1.5 cursor-pointer text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedStatus.includes(value)}
+                  onChange={() => toggleStatus(value)}
+                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${color}`}>
+                  {label}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
 
         {error && <p className="text-red-600 text-sm mb-4">{error}</p>}
@@ -93,57 +146,56 @@ export default function UsuarioLista() {
                   <th className="text-left px-4 py-3 font-medium text-slate-600">E-mail</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Perfil</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Senha provisória</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600">Senha prov.</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50 transition">
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      {u.nome}
-                      {u.id === me?.id && (
-                        <span className="ml-2 text-xs text-slate-400">(você)</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{u.email}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${ROLE_COLOR[u.role] ?? ''}`}>
-                        {ROLE_LABEL[u.role] ?? u.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {u.is_active ? (
-                        <span className="text-green-700 font-medium">Ativo</span>
-                      ) : (
-                        <span className="text-slate-400">Inativo</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {u.must_change_password ? (
-                        <span className="text-amber-600 font-medium">Sim</span>
-                      ) : (
-                        <span className="text-slate-400">Não</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
-                      <Link
-                        to={`/usuarios/${u.id}/editar`}
-                        className="text-blue-600 hover:underline text-xs font-medium"
-                      >
-                        Editar
-                      </Link>
-                      {u.id !== me?.id && (
-                        <button
-                          onClick={() => handleDelete(u)}
-                          className="text-red-600 hover:underline text-xs font-medium"
+                {users.map((u) => {
+                  const st = u.status;
+                  const deletable = canDelete(u);
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50 transition">
+                      <td className="px-4 py-3 font-medium text-slate-800">
+                        {u.nome}
+                        {u.id === me?.id && (
+                          <span className="ml-2 text-xs text-slate-400">(você)</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                      <td className="px-4 py-3">
+                        <RoleBadges roles={u.roles} />
+                      </td>
+                      <td className="px-4 py-3">
+                        {st === 'ativo' && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ativo</span>}
+                        {st === 'pendente' && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Pendente</span>}
+                        {st === 'inativo' && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Inativo</span>}
+                        {!st && <span className="text-xs text-slate-400">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.must_change_password
+                          ? <span className="text-amber-600 font-medium text-xs">Sim</span>
+                          : <span className="text-slate-400 text-xs">Não</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
+                        <Link
+                          to={`/usuarios/${u.id}/editar`}
+                          className="text-blue-600 hover:underline text-xs font-medium"
                         >
-                          Excluir
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                          Editar
+                        </Link>
+                        {deletable && (
+                          <button
+                            onClick={() => handleDelete(u)}
+                            className="text-red-600 hover:underline text-xs font-medium"
+                          >
+                            Excluir
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

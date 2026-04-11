@@ -78,7 +78,7 @@ export default function Registro() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100 py-8 px-4">
       <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-md">
         {/* Header */}
-        <h1 className="text-2xl font-bold text-center text-blue-700 mb-1">Corpo Clínico</h1>
+        <h1 className="text-2xl font-bold text-center mb-1" style={{ color: 'var(--color-primary)' }}>Corpo Clínico</h1>
         <p className="text-center text-slate-500 text-sm mb-6">Criar conta de acesso — Médico</p>
 
         {/* Steps indicator */}

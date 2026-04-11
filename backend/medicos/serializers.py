@@ -46,7 +46,7 @@ class MedicoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Medico
         fields = [
-            "id",
+            "id", "user_id",
             # Dados pessoais
             "nome_completo", "cpf", "data_nascimento", "rg_numero", "estado_civil",
             "foto_perfil", "email", "telefone",
@@ -72,7 +72,7 @@ class MedicoSerializer(serializers.ModelSerializer):
             "campos_pendentes", "cadastro_completo",
         ]
         read_only_fields = [
-            "id", "created_at", "updated_at",
+            "id", "user_id", "created_at", "updated_at",
             "comprovantes_especialidade", "especialidades_nomes",
             "campos_pendentes", "cadastro_completo",
         ]
@@ -83,3 +83,29 @@ class MedicoSerializer(serializers.ModelSerializer):
         if not digits.isdigit() or len(digits) != 11:
             raise serializers.ValidationError("CPF inválido. Informe 11 dígitos numéricos.")
         return value
+
+    def update(self, instance, validated_data):
+        result = super().update(instance, validated_data)
+
+        # Reclassifica para "pendente" se o próprio médico editar e o cadastro
+        # ficar incompleto (só aplica quando status era "ativo")
+        request = self.context.get("request")
+        editor_is_owner = (
+            request is not None
+            and request.user.is_authenticated
+            and instance.user is not None
+            and request.user == instance.user
+        )
+        if editor_is_owner and result.status == "ativo" and not result.cadastro_completo():
+            result.status = "pendente"
+            result.save(update_fields=["status"])
+
+        # Sincroniza is_active do usuário com o status do cadastro médico
+        current_status = result.status
+        if instance.user is not None:
+            expected_active = current_status != "inativo"
+            if instance.user.is_active != expected_active:
+                instance.user.is_active = expected_active
+                instance.user.save(update_fields=["is_active"])
+
+        return result

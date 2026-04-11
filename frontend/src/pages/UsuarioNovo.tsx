@@ -2,43 +2,89 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { createUser } from '../api/users';
+import type { UserCreatePayload } from '../api/users';
+import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
+import type { Role } from '../types';
+
+const ALL_ROLE_OPTIONS: { value: Role; label: string }[] = [
+  { value: 'medico', label: 'Médico' },
+  { value: 'gestor', label: 'Gestor' },
+  { value: 'admin', label: 'Administrador' },
+];
 
 interface FormData {
   nome: string;
   email: string;
-  role: 'medico' | 'gestor' | 'admin';
   password: string;
   cpf?: string;
+  data_nascimento?: string;
+  email_contato?: string;
 }
 
 export default function UsuarioNovo() {
   const navigate = useNavigate();
+  const { isRole } = useAuth();
+  const isAdmin = isRole('admin');
+  const ROLE_OPTIONS = isAdmin ? ALL_ROLE_OPTIONS : ALL_ROLE_OPTIONS.filter((o) => o.value === 'medico');
+
   const {
     register,
     handleSubmit,
-    watch,
     setError,
     formState: { errors },
-  } = useForm<FormData>({ defaultValues: { role: 'medico' } });
+  } = useForm<FormData>();
   const [loading, setLoading] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<Role[]>(['medico']);
+  const [rolesError, setRolesError] = useState('');
+  const [generalError, setGeneralError] = useState('');
 
-  const role = watch('role');
+  const isMedico = selectedRoles.includes('medico');
+
+  const toggleRole = (role: Role) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+    setRolesError('');
+  };
 
   const onSubmit = async (data: FormData) => {
+    if (selectedRoles.length === 0) {
+      setRolesError('Selecione ao menos um perfil.');
+      return;
+    }
     setLoading(true);
+    setGeneralError('');
+    setRolesError('');
     try {
-      const payload = { ...data };
-      if (role !== 'medico') delete payload.cpf;
+      const payload: UserCreatePayload = {
+        nome: data.nome,
+        email: data.email,
+        password: data.password,
+        roles: selectedRoles,
+        ...(isMedico
+          ? { cpf: data.cpf || undefined }
+          : {
+              data_nascimento: data.data_nascimento || undefined,
+              email_contato: data.email_contato || undefined,
+            }),
+      };
       await createUser(payload);
-      navigate('/usuarios');
+      navigate(isAdmin ? '/usuarios' : '/medicos');
     } catch (err: unknown) {
-      const e = err as { response?: { data?: Record<string, string[]> } };
+      const e = err as { response?: { data?: Record<string, unknown> } };
       const errs = e?.response?.data;
       if (errs) {
-        (Object.keys(errs) as (keyof FormData)[]).forEach((field) => {
-          setError(field, { message: errs[field as string]?.[0] ?? String(errs[field as string]) });
+        const FORM_FIELDS: (keyof FormData)[] = ['nome', 'email', 'password', 'cpf', 'data_nascimento', 'email_contato'];
+        FORM_FIELDS.forEach((field) => {
+          const val = errs[field];
+          if (val) setError(field, { message: Array.isArray(val) ? val[0] : String(val) });
         });
+        if (errs['roles']) setRolesError(Array.isArray(errs['roles']) ? errs['roles'][0] : String(errs['roles']));
+        if (errs['detail']) setGeneralError(String(errs['detail']));
+        if (errs['non_field_errors']) setGeneralError(Array.isArray(errs['non_field_errors']) ? errs['non_field_errors'][0] : String(errs['non_field_errors']));
+      } else {
+        setGeneralError('Ocorreu um erro inesperado. Tente novamente.');
       }
     } finally {
       setLoading(false);
@@ -57,6 +103,12 @@ export default function UsuarioNovo() {
             <span>O usuário receberá uma <strong>senha provisória</strong> e será obrigado a criar uma senha pessoal no primeiro acesso.</span>
           </div>
 
+          {generalError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 mb-4">
+              {generalError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Nome completo</label>
@@ -69,7 +121,7 @@ export default function UsuarioNovo() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">E-mail de acesso</label>
               <input
                 type="email"
                 {...register('email', { required: 'Campo obrigatório.' })}
@@ -79,18 +131,29 @@ export default function UsuarioNovo() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Perfil</label>
-              <select
-                {...register('role', { required: true })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="medico">Médico</option>
-                <option value="gestor">Gestor</option>
-                <option value="admin">Administrador</option>
-              </select>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Perfis</label>
+              <div className="flex flex-wrap gap-3">
+                {ROLE_OPTIONS.map(({ value, label }) => {
+                  const locked = !isAdmin && value === 'medico';
+                  return (
+                    <label key={value} className={`flex items-center gap-2 ${locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}>
+                      <input
+                        type="checkbox"
+                        checked={selectedRoles.includes(value)}
+                        onChange={() => !locked && toggleRole(value)}
+                        disabled={locked}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-slate-700">{label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {rolesError && <p className="text-red-600 text-xs mt-1">{rolesError}</p>}
             </div>
 
-            {role === 'medico' && (
+            {/* Campos do médico */}
+            {isMedico && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   CPF <span className="text-slate-400 font-normal">(opcional)</span>
@@ -102,6 +165,23 @@ export default function UsuarioNovo() {
                   className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 {errors.cpf && <p className="text-red-600 text-xs mt-1">{errors.cpf.message}</p>}
+              </div>
+            )}
+
+            {/* Campos do funcionário (não-médico) */}
+            {!isMedico && (
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-xs text-slate-500 font-medium uppercase tracking-wide mb-3">Identificação do funcionário</p>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">CPF</label>
+                  <input
+                    type="text"
+                    placeholder="000.000.000-00"
+                    {...register('cpf', { required: 'Campo obrigatório.' })}
+                    className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {errors.cpf && <p className="text-red-600 text-xs mt-1">{errors.cpf.message}</p>}
+                </div>
               </div>
             )}
 
@@ -129,7 +209,7 @@ export default function UsuarioNovo() {
               </button>
               <button
                 type="button"
-                onClick={() => navigate('/usuarios')}
+                onClick={() => navigate(isAdmin ? '/usuarios' : '/medicos')}
                 className="flex-1 border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium py-2 px-4 rounded-lg text-sm transition"
               >
                 Cancelar

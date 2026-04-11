@@ -4,24 +4,25 @@ import { useForm } from 'react-hook-form';
 import { getUser, updateUser } from '../api/users';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
-import type { User } from '../types';
+import type { Role, User } from '../types';
 
 interface FormData {
   nome: string;
   email: string;
-  role: 'medico' | 'gestor' | 'admin';
-  is_active: boolean;
+  cpf: string;
+  data_nascimento: string;
+  status: 'ativo' | 'inativo';
 }
 
 interface PasswordFormData {
   new_password: string;
 }
 
-const ROLE_LABEL: Record<string, string> = {
-  medico: 'Médico',
-  gestor: 'Gestor',
-  admin: 'Administrador',
-};
+const ROLE_OPTIONS: { value: Role; label: string }[] = [
+  { value: 'medico', label: 'Médico' },
+  { value: 'gestor', label: 'Gestor' },
+  { value: 'admin', label: 'Administrador' },
+];
 
 export default function UsuarioEditar() {
   const { id } = useParams<{ id: string }>();
@@ -32,22 +33,11 @@ export default function UsuarioEditar() {
   const [saving, setSaving] = useState(false);
   const [resettingPwd, setResettingPwd] = useState(false);
   const [pwdSuccess, setPwdSuccess] = useState(false);
+  const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
+  const [rolesError, setRolesError] = useState('');
 
-  const {
-    register,
-    handleSubmit,
-    setError,
-    reset,
-    formState: { errors },
-  } = useForm<FormData>();
-
-  const {
-    register: registerPwd,
-    handleSubmit: handleSubmitPwd,
-    setError: setErrorPwd,
-    reset: resetPwd,
-    formState: { errors: errorsPwd },
-  } = useForm<PasswordFormData>();
+  const { register, handleSubmit, setError, reset, formState: { errors } } = useForm<FormData>();
+  const { register: registerPwd, handleSubmit: handleSubmitPwd, setError: setErrorPwd, reset: resetPwd, formState: { errors: errorsPwd } } = useForm<PasswordFormData>();
 
   const isSelf = me?.id === Number(id);
 
@@ -55,29 +45,54 @@ export default function UsuarioEditar() {
     getUser(Number(id))
       .then((u) => {
         setUserData(u);
+        setSelectedRoles(u.roles || []);
         reset({
           nome: u.nome,
           email: u.email,
-          role: u.role,
-          is_active: u.is_active,
+          cpf: u.funcionario?.cpf ?? '',
+          data_nascimento: u.funcionario?.data_nascimento ?? '',
+          status: (u.funcionario?.status ?? 'ativo') as 'ativo' | 'inativo',
         });
       })
       .catch(() => navigate('/usuarios'))
       .finally(() => setLoading(false));
   }, [id, navigate, reset]);
 
+  const toggleRole = (role: Role) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+    setRolesError('');
+  };
+
   const onSubmit = async (data: FormData) => {
+    if (selectedRoles.length === 0) { setRolesError('Selecione ao menos um perfil.'); return; }
     setSaving(true);
     try {
-      await updateUser(Number(id), data);
+      const payload: Parameters<typeof updateUser>[1] = {
+        nome: data.nome,
+        email: data.email,
+        roles: selectedRoles,
+      };
+      if (userData?.funcionario !== undefined) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload as any).funcionario = {
+          cpf: data.cpf || null,
+          data_nascimento: data.data_nascimento || null,
+          email: data.email,
+          status: data.status,
+        };
+      }
+      await updateUser(Number(id), payload);
       navigate('/usuarios');
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, string[]> } };
       const errs = e?.response?.data;
       if (errs) {
-        (Object.keys(errs) as (keyof FormData)[]).forEach((field) => {
-          setError(field, { message: errs[field as string]?.[0] ?? String(errs[field as string]) });
+        (['nome', 'email'] as (keyof FormData)[]).forEach((field) => {
+          if (errs[field]) setError(field, { message: errs[field]?.[0] });
         });
+        if (errs['roles']) setRolesError(errs['roles'][0]);
       }
     } finally {
       setSaving(false);
@@ -117,28 +132,26 @@ export default function UsuarioEditar() {
 
   if (!userData) return null;
 
+  const hasFuncionario = !!userData.funcionario;
+
   return (
     <div className="min-h-screen bg-slate-100">
       <Navbar />
       <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/usuarios')} className="text-slate-500 hover:text-slate-700 text-sm">
-            ← Voltar
-          </button>
+          <button onClick={() => navigate('/usuarios')} className="text-slate-500 hover:text-slate-700 text-sm">← Voltar</button>
           <h1 className="text-2xl font-bold text-slate-800">Editar Usuário</h1>
         </div>
 
         {isSelf && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg text-sm">
-            Você está editando sua própria conta. Não é possível alterar seu perfil ou desativar-se.
+            Você está editando sua própria conta. Não é possível alterar seu perfil.
           </div>
         )}
 
-        {/* Dados do usuário */}
+        {/* Único card com todos os dados */}
         <div className="bg-white rounded-2xl shadow-sm p-8">
-          <h2 className="text-base font-semibold text-slate-700 mb-4">Dados do Usuário</h2>
-
-          <div className="text-xs text-slate-400 mb-4 space-y-1">
+          <div className="text-xs text-slate-400 mb-5 space-y-1">
             <p>Criado em: {new Date(userData.date_joined).toLocaleDateString('pt-BR')}</p>
             <p>Senha provisória: {userData.must_change_password ? 'Sim (aguardando troca)' : 'Não'}</p>
           </div>
@@ -146,54 +159,68 @@ export default function UsuarioEditar() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Nome completo</label>
-              <input
-                type="text"
-                {...register('nome', { required: 'Campo obrigatório.' })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="text" {...register('nome', { required: 'Campo obrigatório.' })}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               {errors.nome && <p className="text-red-600 text-xs mt-1">{errors.nome.message}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
-              <input
-                type="email"
-                {...register('email', { required: 'Campo obrigatório.' })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <input type="email" {...register('email', { required: 'Campo obrigatório.' })}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
               {errors.email && <p className="text-red-600 text-xs mt-1">{errors.email.message}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Perfil</label>
-              <select
-                {...register('role')}
-                disabled={isSelf}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400"
-              >
-                {Object.entries(ROLE_LABEL).map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Perfis</label>
+              <div className="flex flex-wrap gap-3">
+                {ROLE_OPTIONS.map(({ value, label }) => (
+                  <label key={value} className={`flex items-center gap-2 ${isSelf ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                    <input type="checkbox" checked={selectedRoles.includes(value)}
+                      onChange={() => !isSelf && toggleRole(value)} disabled={isSelf}
+                      className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50" />
+                    <span className="text-sm text-slate-700">{label}</span>
+                  </label>
                 ))}
-              </select>
-              {errors.role && <p className="text-red-600 text-xs mt-1">{errors.role.message}</p>}
+              </div>
+              {rolesError && <p className="text-red-600 text-xs mt-1">{rolesError}</p>}
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_active"
-                {...register('is_active')}
-                disabled={isSelf}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
-              />
-              <label htmlFor="is_active" className="text-sm text-slate-700">Usuário ativo</label>
-            </div>
+            {/* Campos exclusivos de funcionário (não-médico) */}
+            {hasFuncionario && (
+              <>
+                <div className="border-t border-slate-100 pt-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        CPF <span className="text-slate-400 font-normal">(opcional)</span>
+                      </label>
+                      <input type="text" placeholder="000.000.000-00" {...register('cpf')}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Nascimento <span className="text-slate-400 font-normal">(opcional)</span>
+                      </label>
+                      <input type="date" {...register('data_nascimento')}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg text-sm transition"
-            >
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select {...register('status')} disabled={isSelf}
+                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400">
+                      <option value="ativo">Ativo</option>
+                      <option value="inativo">Inativo</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            <button type="submit" disabled={saving}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg text-sm transition">
               {saving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </form>
@@ -215,25 +242,16 @@ export default function UsuarioEditar() {
           <form onSubmit={handleSubmitPwd(onResetPassword)} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Nova senha provisória</label>
-              <input
-                type="password"
-                autoComplete="new-password"
+              <input type="password" autoComplete="new-password"
                 {...registerPwd('new_password', {
                   required: 'Campo obrigatório.',
                   minLength: { value: 8, message: 'Mínimo de 8 caracteres.' },
                 })}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {errorsPwd.new_password && (
-                <p className="text-red-600 text-xs mt-1">{errorsPwd.new_password.message}</p>
-              )}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              {errorsPwd.new_password && <p className="text-red-600 text-xs mt-1">{errorsPwd.new_password.message}</p>}
             </div>
-
-            <button
-              type="submit"
-              disabled={resettingPwd}
-              className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg text-sm transition"
-            >
+            <button type="submit" disabled={resettingPwd}
+              className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg text-sm transition">
               {resettingPwd ? 'Redefinindo...' : 'Redefinir Senha'}
             </button>
           </form>

@@ -1,7 +1,7 @@
 from django.db import transaction
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from .models import CustomUser
+from .models import CustomUser, Funcionario
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -10,17 +10,29 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token["nome"] = user.nome
         token["email"] = user.email
-        token["role"] = user.role
+        token["roles"] = user.roles
         token["must_change_password"] = user.must_change_password
         return token
 
     def validate(self, attrs):
+        from django.contrib.auth import authenticate
+        from rest_framework.exceptions import AuthenticationFailed
+
+        # Verifica credenciais antes do super() para distinguir "inativo" de "senha errada"
+        email = attrs.get(self.username_field, "")
+        password = attrs.get("password", "")
+        user = CustomUser.objects.filter(email=email).first()
+        if user is not None and user.check_password(password) and not user.is_active:
+            raise AuthenticationFailed(
+                {"code": "user_inactive", "detail": "Sua conta está inativa. Entre em contato com o administrador do sistema."},
+            )
+
         data = super().validate(attrs)
         data["user"] = {
             "id": self.user.id,
             "nome": self.user.nome,
             "email": self.user.email,
-            "role": self.user.role,
+            "roles": self.user.roles,
             "must_change_password": self.user.must_change_password,
         }
         return data
@@ -29,7 +41,6 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
-    # Campos do cadastro médico (opcionais no registro inicial)
     cpf = serializers.CharField(max_length=14, required=False, allow_blank=True)
 
     class Meta:
@@ -57,11 +68,10 @@ class RegisterSerializer(serializers.ModelSerializer):
         validated_data.pop("password_confirm")
         cpf = validated_data.pop("cpf", "")
         user = CustomUser.objects.create_user(
-            role=CustomUser.Role.MEDICO,
+            roles=["medico"],
             must_change_password=False,
             **validated_data,
         )
-        # Criar o registro médico vinculado ao usuário
         from medicos.models import Medico
         Medico.objects.create(
             user=user,
@@ -72,21 +82,80 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
+# ---------------------------------------------------------------------------
+# Funcionário
+# ---------------------------------------------------------------------------
+
+class FuncionarioSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Funcionario
+        fields = ["cpf", "data_nascimento", "email", "status"]
+
+
+# ---------------------------------------------------------------------------
+# Usuário
+# ---------------------------------------------------------------------------
+
+VALID_ROLES = {"medico", "gestor", "admin"}
+
+
 class UserSerializer(serializers.ModelSerializer):
+    funcionario = FuncionarioSerializer(read_only=True)
+    status = serializers.SerializerMethodField()
+
+    def get_status(self, obj):
+        """Retorna o status do perfil vinculado (médico ou funcionário)."""
+        try:
+            return obj.medico.status
+        except Exception:
+            pass
+        try:
+            return obj.funcionario.status
+        except Exception:
+            pass
+        return None
+
     class Meta:
         model = CustomUser
-        fields = ["id", "email", "nome", "role", "is_active", "date_joined", "must_change_password"]
-        read_only_fields = ["id", "date_joined"]
+        fields = [
+            "id", "email", "nome", "roles", "is_active",
+            "date_joined", "must_change_password", "funcionario", "status",
+        ]
+        read_only_fields = ["id", "date_joined", "status"]
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
     """Admin cria qualquer usuário com senha provisória."""
     password = serializers.CharField(write_only=True, min_length=8)
+    roles = serializers.ListField(
+        child=serializers.ChoiceField(choices=list(VALID_ROLES)),
+        min_length=1,
+    )
+    # CPF usado para médico OU funcionário conforme os roles
     cpf = serializers.CharField(max_length=14, required=False, allow_blank=True, default="")
+    data_nascimento = serializers.DateField(required=False, allow_null=True)
+    email_contato = serializers.EmailField(required=False, allow_blank=True, default="")
 
     class Meta:
         model = CustomUser
-        fields = ["email", "nome", "role", "password", "cpf"]
+        fields = ["email", "nome", "roles", "password", "cpf", "data_nascimento", "email_contato"]
+
+    def validate_roles(self, value):
+        if not value:
+            raise serializers.ValidationError("Selecione ao menos um perfil.")
+        invalid = set(value) - VALID_ROLES
+        if invalid:
+            raise serializers.ValidationError(f"Perfis inválidos: {', '.join(invalid)}")
+        roles = list(set(value))
+        # Gestores só podem criar usuários com perfil médico
+        request = self.context.get("request")
+        if request and not (set(request.user.roles or []) & {"admin"}):
+            forbidden = set(roles) - {"medico"}
+            if forbidden:
+                raise serializers.ValidationError(
+                    "Gestores só podem criar usuários com perfil Médico."
+                )
+        return roles
 
     def validate_cpf(self, value):
         if not value:
@@ -97,22 +166,35 @@ class UserCreateSerializer(serializers.ModelSerializer):
         from medicos.models import Medico
         if Medico.objects.filter(cpf=value).exists():
             raise serializers.ValidationError("Já existe um cadastro com este CPF.")
+        if Funcionario.objects.filter(cpf=value).exists():
+            raise serializers.ValidationError("Já existe um cadastro com este CPF.")
         return value
 
     @transaction.atomic
     def create(self, validated_data):
         cpf = validated_data.pop("cpf", "")
+        data_nascimento = validated_data.pop("data_nascimento", None)
+        email_contato = validated_data.pop("email_contato", "")
         user = CustomUser.objects.create_user(
             must_change_password=True,
             **validated_data,
         )
-        if user.role == CustomUser.Role.MEDICO:
+        roles = user.roles or []
+        if "medico" in roles:
             from medicos.models import Medico
             Medico.objects.create(
                 user=user,
                 nome_completo=user.nome,
                 cpf=cpf or None,
                 email=user.email,
+            )
+        else:
+            # Gestor / Admin sem papel de médico → cria perfil funcionário
+            Funcionario.objects.create(
+                user=user,
+                cpf=cpf or None,
+                data_nascimento=data_nascimento,
+                email=email_contato or user.email,
             )
         return user
 
@@ -122,28 +204,55 @@ class UserManagementSerializer(serializers.ModelSerializer):
     new_password = serializers.CharField(
         write_only=True, required=False, allow_blank=True, min_length=8
     )
+    roles = serializers.ListField(
+        child=serializers.ChoiceField(choices=list(VALID_ROLES)),
+        min_length=1,
+        required=False,
+    )
+    funcionario = FuncionarioSerializer(required=False)
 
     class Meta:
         model = CustomUser
-        fields = ["id", "email", "nome", "role", "is_active", "must_change_password", "date_joined", "new_password"]
+        fields = [
+            "id", "email", "nome", "roles", "is_active",
+            "must_change_password", "date_joined", "new_password", "funcionario",
+        ]
         read_only_fields = ["id", "date_joined"]
+
+    def validate_roles(self, value):
+        if not value:
+            raise serializers.ValidationError("Selecione ao menos um perfil.")
+        return list(set(value))
 
     def validate(self, attrs):
         request = self.context.get("request")
         if request and self.instance == request.user:
-            if "role" in attrs and attrs["role"] != self.instance.role:
-                raise serializers.ValidationError({"role": "Você não pode alterar seu próprio perfil."})
+            if "roles" in attrs and set(attrs["roles"]) != set(self.instance.roles or []):
+                raise serializers.ValidationError({"roles": "Você não pode alterar seu próprio perfil."})
             if "is_active" in attrs and attrs["is_active"] is False:
                 raise serializers.ValidationError({"is_active": "Você não pode desativar sua própria conta."})
         return attrs
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         new_password = validated_data.pop("new_password", None)
+        funcionario_data = validated_data.pop("funcionario", None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         if new_password:
             instance.set_password(new_password)
             instance.must_change_password = True
+
+        # Atualiza perfil de funcionário se enviado
+        if funcionario_data is not None:
+            func, _ = Funcionario.objects.get_or_create(user=instance)
+            for attr, value in funcionario_data.items():
+                setattr(func, attr, value)
+            func.save()
+            # Sincroniza is_active com o status do funcionário
+            instance.is_active = (func.status == Funcionario.Status.ATIVO)
+
         instance.save()
         return instance
 

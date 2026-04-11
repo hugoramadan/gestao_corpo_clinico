@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfig } from '../contexts/ConfigContext';
 import Navbar from '../components/Navbar';
 
 export default function Dashboard() {
   const { user, isRole } = useAuth();
+  const { nome } = useConfig();
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -12,7 +14,7 @@ export default function Dashboard() {
         <h2 className="text-2xl font-bold text-slate-800 mb-2">
           Olá, {user?.nome}!
         </h2>
-        <p className="text-slate-500 mb-8">Bem-vindo ao sistema de gestão do corpo clínico.</p>
+        <p className="text-slate-500 mb-8">Bem-vindo ao {nome}.</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isRole('medico') && (

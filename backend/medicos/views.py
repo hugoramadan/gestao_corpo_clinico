@@ -14,11 +14,18 @@ from .permissions import IsGestorOrAdmin, IsAdminOnly, IsMedicoOwnerOrStaff
 
 
 class MedicoListCreateView(generics.ListCreateAPIView):
-    queryset = Medico.objects.select_related("user").prefetch_related("especialidades")
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["nome_completo", "cpf", "crm_numero", "email"]
     ordering_fields = ["nome_completo", "created_at", "status"]
     ordering = ["nome_completo"]
+
+    def get_queryset(self):
+        qs = Medico.objects.select_related("user").prefetch_related("especialidades")
+        status_param = self.request.query_params.get("status")
+        if status_param:
+            statuses = [s.strip() for s in status_param.split(",") if s.strip()]
+            qs = qs.filter(status__in=statuses)
+        return qs
 
     def get_serializer_class(self):
         if self.request.method == "GET":
@@ -33,7 +40,7 @@ class MedicoListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         # Se o criador é um médico, vincula automaticamente ao seu usuário
-        if self.request.user.role == "medico":
+        if "medico" in (self.request.user.roles or []):
             serializer.save(user=self.request.user)
         else:
             serializer.save()
@@ -54,6 +61,20 @@ class MedicoDetailView(generics.RetrieveUpdateDestroyAPIView):
         obj = super().get_object()
         self.check_object_permissions(self.request, obj)
         return obj
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.user is not None and instance.user == request.user:
+            return Response(
+                {"detail": "Você não pode excluir seu próprio cadastro médico."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if instance.status != "inativo":
+            return Response(
+                {"detail": "Apenas cadastros com status inativo podem ser excluídos."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     def perform_destroy(self, instance):
         user = instance.user  # salva referência antes de deletar

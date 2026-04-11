@@ -1,14 +1,17 @@
 import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfig } from '../contexts/ConfigContext';
 
 export default function Login() {
   const { login } = useAuth();
+  const { nome, subtitulo, logoUrl } = useConfig();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [inactiveError, setInactiveError] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const senhaRedefinida = searchParams.get('senha') === 'redefinida';
@@ -17,6 +20,7 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setInactiveError(false);
     setLoading(true);
     try {
       const loggedUser = await login(email, password);
@@ -25,8 +29,15 @@ export default function Login() {
       } else {
         navigate('/dashboard');
       }
-    } catch {
-      setError('E-mail ou senha inválidos.');
+    } catch (err: unknown) {
+      const detail = (err as { response?: { data?: { code?: string; detail?: string } } })
+        ?.response?.data;
+      if (detail?.code === 'user_inactive') {
+        setInactiveError(true);
+        setError(detail.detail ?? 'Sua conta está inativa. Entre em contato com o administrador do sistema.');
+      } else {
+        setError('E-mail ou senha inválidos.');
+      }
     } finally {
       setLoading(false);
     }
@@ -35,8 +46,13 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center text-blue-700 mb-2">Corpo Clínico</h1>
-        <p className="text-center text-slate-500 text-sm mb-6">Gestão de Profissionais de Saúde</p>
+        {logoUrl && (
+          <div className="flex justify-center mb-3">
+            <img src={logoUrl} alt="Logo" className="h-14 w-auto object-contain" />
+          </div>
+        )}
+        <h1 className="text-2xl font-bold text-center mb-2" style={{ color: 'var(--color-primary)' }}>{nome}</h1>
+        <p className="text-center text-slate-500 text-sm mb-6">{subtitulo}</p>
 
         {senhaRedefinida && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 text-sm">
@@ -48,9 +64,15 @@ export default function Login() {
             Conta criada! Faça login para acessar o sistema.
           </div>
         )}
-        {error && (
+        {error && !inactiveError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
             {error}
+          </div>
+        )}
+        {inactiveError && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded-lg mb-4 text-sm">
+            <p className="font-semibold mb-1">Conta inativa</p>
+            <p>{error}</p>
           </div>
         )}
 
@@ -80,7 +102,8 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition disabled:opacity-60"
+            className="w-full text-white font-semibold py-2 rounded-lg transition disabled:opacity-60"
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>

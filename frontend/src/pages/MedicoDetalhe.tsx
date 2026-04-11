@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import CadastroIncompletoAviso from '../components/CadastroIncompletoAviso';
 import type { Medico } from '../types';
+import { mediaUrl } from '../utils/media';
 
 const STATUS_COLORS = {
   ativo: 'bg-green-100 text-green-700',
@@ -26,7 +27,7 @@ function DocLink({ label, url }: { label: string; url?: string | null }) {
   if (!url) return null;
   return (
     <a
-      href={url}
+      href={mediaUrl(url)}
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 text-sm text-blue-600 hover:underline"
@@ -39,7 +40,7 @@ function DocLink({ label, url }: { label: string; url?: string | null }) {
 export default function MedicoDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isRole } = useAuth();
+  const { isRole, user } = useAuth();
   const [medico, setMedico] = useState<Medico | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +84,7 @@ export default function MedicoDetalhe() {
         {/* Cabeçalho */}
         <div className="bg-white rounded-2xl shadow-sm p-6 flex items-start gap-4">
           {medico.foto_perfil ? (
-            <img src={medico.foto_perfil} alt="Foto" className="w-20 h-20 rounded-full object-cover border-2 border-slate-200" />
+            <img src={mediaUrl(medico.foto_perfil)} alt="Foto" className="w-20 h-20 rounded-full object-cover border-2 border-slate-200" />
           ) : (
             <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl text-blue-400">👤</div>
           )}
@@ -106,7 +107,7 @@ export default function MedicoDetalhe() {
             >
               Editar
             </Link>
-            {isRole('admin') && (
+            {isRole('admin') && medico.user_id !== user?.id && medico.status === 'inativo' && (
               <button
                 onClick={handleDelete}
                 className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 transition"
@@ -166,7 +167,7 @@ export default function MedicoDetalhe() {
                 <div key={c.id} className="flex items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-1.5 rounded-lg">
                   <span className="text-sm font-medium">{c.especialidade_nome}</span>
                   {c.comprovante && (
-                    <a href={c.comprovante} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
+                    <a href={mediaUrl(c.comprovante)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
                       📎
                     </a>
                   )}
@@ -179,17 +180,33 @@ export default function MedicoDetalhe() {
         </div>
 
         {/* Documentos */}
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <h3 className="font-semibold text-slate-700 border-b pb-2 mb-3">Documentos</h3>
-          <div className="space-y-2">
-            <DocLink label="Diploma Médico" url={medico.diploma_medico} />
-            <DocLink label="Declaração de Quitação com CRM" url={medico.declaracao_quitacao_crm} />
-            <DocLink label="Declaração de Ética com CRM" url={medico.etica_crm} />
-          </div>
-          {!medico.diploma_medico && !medico.declaracao_quitacao_crm && !medico.etica_crm && (
-            <p className="text-sm text-slate-400">Nenhum documento enviado.</p>
-          )}
-        </div>
+        {(() => {
+          const docs = [
+            { label: 'CNH', url: medico.cnh },
+            { label: 'RG / CPF', url: medico.rg_cpf },
+            { label: 'CRM', url: medico.crm_doc },
+            { label: 'Comprovante de Endereço', url: medico.comprovante_endereco },
+            { label: 'Diploma Médico', url: medico.diploma_medico },
+            { label: 'Declaração de Quitação com CRM', url: medico.declaracao_quitacao_crm },
+            { label: 'Declaração de Ética com CRM', url: medico.etica_crm },
+            { label: 'Certidão de Casamento', url: medico.certidao_casamento },
+            { label: 'Currículo Lattes', url: medico.curriculo_lattes },
+          ].filter((d) => d.url);
+          return (
+            <div className="bg-white rounded-2xl shadow-sm p-5">
+              <h3 className="font-semibold text-slate-700 border-b pb-2 mb-3">Documentos</h3>
+              {docs.length > 0 ? (
+                <div className="space-y-2">
+                  {docs.map(({ label, url }) => (
+                    <DocLink key={label} label={label} url={url} />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400">Nenhum documento enviado.</p>
+              )}
+            </div>
+          );
+        })()}
 
         <div className="flex justify-start">
           <button
