@@ -8,8 +8,9 @@
 
 - **Backend:** Django 5 + Django REST Framework + SimpleJWT — `backend/`
 - **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS — `frontend/`
-- **Banco de dados (dev):** SQLite
+- **Banco de dados (dev):** SQLite · **(prod):** PostgreSQL 16
 - **Arquivos de mídia:** `backend/media/`
+- **Deploy:** Docker Compose (`docker-compose.prod.yml`) — Nginx + Gunicorn + PostgreSQL
 
 ---
 
@@ -147,3 +148,23 @@ frontend/src/
 | admin@teste.com | admin123 | admin |
 | gestor@teste.com | gestor123 | gestor |
 | medico@teste.com | medico123 | medico |
+
+---
+
+## Produção
+
+- **Domínio:** hugoramadan.com.br
+- **Variáveis de ambiente:** `.env.prod` na raiz do projeto (não versionado)
+- **SSL:** Let's Encrypt — certificado em `/etc/letsencrypt/live/hugoramadan.com.br/`
+- **nginx.conf:** `nginx/nginx.conf` — domínio real já configurado (substituído de `DOMAIN_PLACEHOLDER`)
+- **Frontend:** buildado dentro da imagem Docker do Nginx (multi-stage build em `nginx/Dockerfile`). Rebuild necessário após qualquer mudança no frontend ou no `nginx.conf`:
+  ```bash
+  docker compose -f docker-compose.prod.yml build --no-cache nginx && docker compose -f docker-compose.prod.yml up -d nginx
+  ```
+- **Título da aba:** `frontend/index.html` — "Cadastro médico", sem favicon
+- **ConfigContext:** aplica `--color-primary` imediatamente com o valor padrão antes de carregar a API, evitando elementos invisíveis no carregamento inicial
+
+### Notas importantes de deploy
+- O `nginx.conf` **não deve ser editado diretamente no servidor** — editar localmente, commitar e fazer `git pull` + rebuild
+- O arquivo `.env.prod` fica apenas no servidor (não versionado). Contém `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `CORS_ALLOWED_ORIGINS` com o domínio de produção
+- Criar primeiro admin em produção via `manage.py shell` com `roles = ['admin']` — `createsuperuser` cria sem roles e o usuário não aparece no sistema
