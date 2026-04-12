@@ -1,0 +1,59 @@
+# Redireciona HTTP → HTTPS
+server {
+    listen 80;
+    server_name clinica.exemplo.com.br www.clinica.exemplo.com.br;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name clinica.exemplo.com.br www.clinica.exemplo.com.br;
+
+    # Certificados SSL gerenciados pelo certbot
+    ssl_certificate     /etc/letsencrypt/live/clinica.exemplo.com.br/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/clinica.exemplo.com.br/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Suporta uploads de comprovantes / fotos
+    client_max_body_size 20M;
+
+    # Arquivos estáticos do Django (collectstatic)
+    location /static/ {
+        alias /var/www/corpoclinico/static/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Arquivos de mídia (uploads de usuários)
+    location /media/ {
+        alias /var/www/corpoclinico/media/;
+        expires 7d;
+    }
+
+    # API Django — proxy para gunicorn via unix socket
+    location /api/ {
+        proxy_pass         http://unix:/run/corpoclinico/gunicorn.sock;
+        proxy_set_header   Host $http_host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # Django Admin
+    location /admin/ {
+        proxy_pass         http://unix:/run/corpoclinico/gunicorn.sock;
+        proxy_set_header   Host $http_host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    # React SPA — fallback para index.html (client-side routing)
+    location / {
+        root  /var/www/corpoclinico/frontend;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+}

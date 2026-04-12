@@ -1,0 +1,33 @@
+[Unit]
+Description=Corpo Clínico — Gunicorn Application Server
+After=network.target postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=notify
+User=corpoclinico
+Group=corpoclinico
+WorkingDirectory=/srv/corpoclinico/backend
+EnvironmentFile=/etc/corpoclinico/.env
+
+RuntimeDirectory=corpoclinico
+RuntimeDirectoryMode=0750
+
+ExecStart=/srv/corpoclinico/venv/bin/gunicorn \
+    --workers 2 \
+    --worker-class sync \
+    --bind unix:/run/corpoclinico/gunicorn.sock \
+    --timeout 120 \
+    --access-logfile /var/log/corpoclinico/access.log \
+    --error-logfile /var/log/corpoclinico/error.log \
+    core.wsgi:application
+
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
