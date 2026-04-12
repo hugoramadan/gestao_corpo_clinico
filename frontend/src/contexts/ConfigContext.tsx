@@ -46,6 +46,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    apply(defaults.corPrimaria);
     load();
   }, []);
 
