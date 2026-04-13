@@ -1,4 +1,5 @@
 import logging
+import threading
 
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
@@ -82,21 +83,24 @@ def password_reset_request_view(request):
 
     reset_url = f"{settings.FRONTEND_URL}/redefinir-senha?uid={uid}&token={token}"
 
-    try:
-        send_mail(
-            subject="Recuperação de senha — Corpo Clínico",
-            message=(
-                f"Olá, {user.nome}!\n\n"
-                f"Você solicitou a redefinição de senha. Clique no link abaixo:\n\n"
-                f"{reset_url}\n\n"
-                f"O link expira em 24 horas. Se não foi você, ignore este e-mail."
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=False,
-        )
-    except Exception:
-        logger.exception("Falha ao enviar e-mail de recuperação de senha para %s", user.email)
+    def _send():
+        try:
+            send_mail(
+                subject="Recuperação de senha — Corpo Clínico",
+                message=(
+                    f"Olá, {user.nome}!\n\n"
+                    f"Você solicitou a redefinição de senha. Clique no link abaixo:\n\n"
+                    f"{reset_url}\n\n"
+                    f"O link expira em 24 horas. Se não foi você, ignore este e-mail."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+        except Exception:
+            logger.exception("Falha ao enviar e-mail de recuperação de senha para %s", user.email)
+
+    threading.Thread(target=_send, daemon=True).start()
 
     return Response({"detail": "Se esse e-mail estiver cadastrado, você receberá as instruções."})
 
