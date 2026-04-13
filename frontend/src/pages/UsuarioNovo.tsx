@@ -65,6 +65,7 @@ export default function UsuarioNovo() {
         ...(isMedico
           ? { cpf: data.cpf || undefined }
           : {
+              cpf: data.cpf || undefined,
               data_nascimento: data.data_nascimento || undefined,
               email_contato: data.email_contato || undefined,
             }),

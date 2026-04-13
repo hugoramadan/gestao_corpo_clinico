@@ -39,8 +39,11 @@ class MedicoListCreateView(generics.ListCreateAPIView):
         return [IsAuthenticated()]
 
     def perform_create(self, serializer):
+        from rest_framework.exceptions import ValidationError
         # Se o criador é um médico, vincula automaticamente ao seu usuário
         if "medico" in (self.request.user.roles or []):
+            if hasattr(self.request.user, "medico"):
+                raise ValidationError({"detail": "Você já possui um cadastro médico."})
             serializer.save(user=self.request.user)
         else:
             serializer.save()

@@ -91,6 +91,21 @@ class FuncionarioSerializer(serializers.ModelSerializer):
         model = Funcionario
         fields = ["cpf", "data_nascimento", "email", "status"]
 
+    def validate_cpf(self, value):
+        if not value:
+            return value
+        digits = value.replace(".", "").replace("-", "")
+        if not digits.isdigit() or len(digits) != 11:
+            raise serializers.ValidationError("CPF inválido. Informe 11 dígitos numéricos.")
+        # Verifica unicidade excluindo o próprio registro
+        user_instance = self.parent.instance if self.parent else None
+        qs = Funcionario.objects.filter(cpf=value)
+        if user_instance and hasattr(user_instance, "funcionario"):
+            qs = qs.exclude(pk=user_instance.funcionario.pk)
+        if qs.exists():
+            raise serializers.ValidationError("Já existe um cadastro com este CPF.")
+        return value
+
 
 # ---------------------------------------------------------------------------
 # Usuário
@@ -235,6 +250,8 @@ class UserManagementSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        old_roles = set(instance.roles or [])
+
         new_password = validated_data.pop("new_password", None)
         funcionario_data = validated_data.pop("funcionario", None)
 
@@ -254,6 +271,34 @@ class UserManagementSerializer(serializers.ModelSerializer):
             instance.is_active = (func.status == Funcionario.Status.ATIVO)
 
         instance.save()
+
+        new_roles = set(instance.roles or [])
+
+        # Reconciliação de domínio: médico adicionado → criar Medico se não existir
+        if "medico" in new_roles - old_roles:
+            from medicos.models import Medico
+            if not Medico.objects.filter(user=instance).exists():
+                Medico.objects.create(
+                    user=instance,
+                    nome_completo=instance.nome,
+                    email=instance.email,
+                )
+
+        # Reconciliação de domínio: médico removido → desvincular sem destruir o registro clínico
+        if "medico" in old_roles - new_roles:
+            from medicos.models import Medico
+            try:
+                medico = instance.medico
+                medico.user = None
+                medico.status = Medico.Status.INATIVO
+                medico.save(update_fields=["user", "status"])
+            except Medico.DoesNotExist:
+                pass
+
+        # Reconciliação de domínio: não-médico sem Funcionario → garantir que existe
+        if new_roles - {"medico"} and not Funcionario.objects.filter(user=instance).exists():
+            Funcionario.objects.create(user=instance)
+
         return instance
 
 
