@@ -5,6 +5,7 @@ import { getUser, updateUser } from '../api/users';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import type { Role, User } from '../types';
+import { ROLE_OPTIONS } from '../utils/roles';
 
 interface FormData {
   nome: string;
@@ -17,12 +18,6 @@ interface FormData {
 interface PasswordFormData {
   new_password: string;
 }
-
-const ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: 'medico', label: 'Médico' },
-  { value: 'gestor', label: 'Gestor' },
-  { value: 'admin', label: 'Administrador' },
-];
 
 export default function UsuarioEditar() {
   const { id } = useParams<{ id: string }>();
@@ -74,7 +69,7 @@ export default function UsuarioEditar() {
         email: data.email,
         roles: selectedRoles,
       };
-      if (userData?.funcionario !== undefined) {
+      if (userData?.funcionario != null) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload as any).funcionario = {
           cpf: data.cpf || null,

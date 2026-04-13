@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Medico, Especialidade, MedicoEspecialidade
+from core.validators import validate_cpf_digits
 
 
 class EspecialidadeSerializer(serializers.ModelSerializer):
@@ -78,10 +79,11 @@ class MedicoSerializer(serializers.ModelSerializer):
         ]
 
     def validate_cpf(self, value):
-        # Remove formatação para validação simples
+        if not value:
+            return value
         digits = value.replace(".", "").replace("-", "")
-        if not digits.isdigit() or len(digits) != 11:
-            raise serializers.ValidationError("CPF inválido. Informe 11 dígitos numéricos.")
+        if not validate_cpf_digits(digits):
+            raise serializers.ValidationError("CPF inválido.")
         return value
 
     def update(self, instance, validated_data):

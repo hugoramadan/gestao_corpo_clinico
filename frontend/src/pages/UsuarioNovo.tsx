@@ -6,12 +6,7 @@ import type { UserCreatePayload } from '../api/users';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
 import type { Role } from '../types';
-
-const ALL_ROLE_OPTIONS: { value: Role; label: string }[] = [
-  { value: 'medico', label: 'Médico' },
-  { value: 'gestor', label: 'Gestor' },
-  { value: 'admin', label: 'Administrador' },
-];
+import { ROLE_OPTIONS as ALL_ROLE_OPTIONS } from '../utils/roles';
 
 interface FormData {
   nome: string;

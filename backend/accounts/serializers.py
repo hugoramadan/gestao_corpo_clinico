@@ -2,6 +2,7 @@ from django.db import transaction
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomUser, Funcionario
+from core.validators import validate_cpf_digits
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -56,8 +57,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         if not value:
             return value
         digits = value.replace(".", "").replace("-", "")
-        if not digits.isdigit() or len(digits) != 11:
-            raise serializers.ValidationError("CPF inválido. Informe 11 dígitos numéricos.")
+        if not validate_cpf_digits(digits):
+            raise serializers.ValidationError("CPF inválido.")
         from medicos.models import Medico
         if Medico.objects.filter(cpf=value).exists():
             raise serializers.ValidationError("Já existe um cadastro com este CPF.")
@@ -95,8 +96,8 @@ class FuncionarioSerializer(serializers.ModelSerializer):
         if not value:
             return value
         digits = value.replace(".", "").replace("-", "")
-        if not digits.isdigit() or len(digits) != 11:
-            raise serializers.ValidationError("CPF inválido. Informe 11 dígitos numéricos.")
+        if not validate_cpf_digits(digits):
+            raise serializers.ValidationError("CPF inválido.")
         # Verifica unicidade excluindo o próprio registro
         user_instance = self.parent.instance if self.parent else None
         qs = Funcionario.objects.filter(cpf=value)
@@ -122,11 +123,11 @@ class UserSerializer(serializers.ModelSerializer):
         """Retorna o status do perfil vinculado (médico ou funcionário)."""
         try:
             return obj.medico.status
-        except Exception:
+        except AttributeError:
             pass
         try:
             return obj.funcionario.status
-        except Exception:
+        except AttributeError:
             pass
         return None
 
@@ -176,8 +177,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if not value:
             return value
         digits = value.replace(".", "").replace("-", "")
-        if not digits.isdigit() or len(digits) != 11:
-            raise serializers.ValidationError("CPF inválido. Informe 11 dígitos numéricos.")
+        if not validate_cpf_digits(digits):
+            raise serializers.ValidationError("CPF inválido.")
         from medicos.models import Medico
         if Medico.objects.filter(cpf=value).exists():
             raise serializers.ValidationError("Já existe um cadastro com este CPF.")
@@ -261,8 +262,11 @@ class UserManagementSerializer(serializers.ModelSerializer):
             instance.set_password(new_password)
             instance.must_change_password = True
 
-        # Atualiza perfil de funcionário se enviado
-        if funcionario_data is not None:
+        # Atualiza perfil de funcionário se enviado — só aplica se o usuário
+        # tem roles não-médicos (gestores/admins têm Funcionario, médicos não)
+        roles_after_edit = set(validated_data.get("roles", instance.roles) or [])
+        has_non_medico_role = bool(roles_after_edit - {"medico"})
+        if funcionario_data is not None and has_non_medico_role:
             func, _ = Funcionario.objects.get_or_create(user=instance)
             for attr, value in funcionario_data.items():
                 setattr(func, attr, value)

@@ -1,12 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useConfig } from '../contexts/ConfigContext';
-
-const ROLE_LABEL: Record<string, string> = {
-  medico: 'Médico',
-  gestor: 'Gestor',
-  admin: 'Administrador',
-};
+import { ROLE_LABEL } from '../utils/roles';
 
 export default function Navbar() {
   const { user, logout, isRole } = useAuth();

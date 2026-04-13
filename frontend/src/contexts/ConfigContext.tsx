@@ -18,7 +18,7 @@ const defaults: ConfigContextValue = {
   reload: () => {},
 };
 
-const ConfigContext = createContext<ConfigContextValue>(defaults);
+const ConfigContext = createContext<ConfigContextValue | undefined>(undefined);
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
   const [nome, setNome] = useState(defaults.nome);
@@ -57,4 +57,8 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useConfig = () => useContext(ConfigContext);
+export const useConfig = () => {
+  const ctx = useContext(ConfigContext);
+  if (!ctx) throw new Error('useConfig deve ser usado dentro de <ConfigProvider>');
+  return ctx;
+};

@@ -3,13 +3,8 @@ import { Link } from 'react-router-dom';
 import { getUsers, deleteUser } from '../api/users';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
-import type { User } from '../types';
-
-const ROLE_LABEL: Record<string, string> = {
-  medico: 'Médico',
-  gestor: 'Gestor',
-  admin: 'Administrador',
-};
+import type { Role, User } from '../types';
+import { ROLE_LABEL } from '../utils/roles';
 
 const ROLE_COLOR: Record<string, string> = {
   medico: 'bg-blue-100 text-blue-700',
@@ -23,7 +18,7 @@ const STATUS_OPTIONS = [
   { value: 'inativo', label: 'Inativo', color: 'bg-red-100 text-red-600' },
 ];
 
-function RoleBadges({ roles }: { roles: string[] }) {
+function RoleBadges({ roles }: { roles: Role[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {(roles || []).map((r) => (

@@ -59,8 +59,8 @@ export interface Medico {
   id: number;
   user_id: number | null;
   nome_completo: string;
-  cpf: string;
-  data_nascimento: string;
+  cpf: string | null;
+  data_nascimento: string | null;
   rg_numero: string;
   estado_civil: EstadoCivil;
   foto_perfil: string | null;
@@ -76,7 +76,7 @@ export interface Medico {
   estado: string;
   // Formação
   instituicao_formacao: string;
-  ano_formatura: number;
+  ano_formatura: number | null;
   link_lattes: string;
   // CRM
   crm_numero: string;
@@ -109,7 +109,7 @@ export interface Medico {
 export interface MedicoListItem {
   id: number;
   nome_completo: string;
-  cpf: string;
+  cpf: string | null;
   crm_numero: string;
   crm_estado: string;
   especialidades: Especialidade[];
