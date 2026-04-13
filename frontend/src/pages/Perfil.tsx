@@ -43,13 +43,13 @@ export default function Perfil() {
         )}
 
         <div className="bg-white rounded-2xl shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
+          <div className="flex flex-wrap items-start justify-between gap-2 mb-6">
+            <div className="min-w-0">
               <h2 className="text-xl font-bold text-slate-800">Meu Cadastro Médico</h2>
-              <p className="text-sm text-slate-500">{user?.email}</p>
+              <p className="text-sm text-slate-500 break-all">{user?.email}</p>
             </div>
             {medico && (
-              <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+              <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${
                 medico.status === 'ativo' ? 'bg-green-100 text-green-700' :
                 medico.status === 'inativo' ? 'bg-red-100 text-red-600' :
                 'bg-yellow-100 text-yellow-700'

@@ -87,7 +87,7 @@ export default function UsuarioLista() {
     <div className="min-h-screen bg-slate-100">
       <Navbar />
       <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
           <h1 className="text-2xl font-bold text-slate-800">Usuários do Sistema</h1>
           <Link
             to="/usuarios/novo"
@@ -133,14 +133,15 @@ export default function UsuarioLista() {
           ) : users.length === 0 ? (
             <p className="text-center text-slate-500 py-12 text-sm">Nenhum usuário encontrado.</p>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Nome</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">E-mail</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600 hidden sm:table-cell">E-mail</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Perfil</th>
                   <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
-                  <th className="text-left px-4 py-3 font-medium text-slate-600">Senha prov.</th>
+                  <th className="text-left px-4 py-3 font-medium text-slate-600 hidden sm:table-cell">Senha prov.</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -156,7 +157,7 @@ export default function UsuarioLista() {
                           <span className="ml-2 text-xs text-slate-400">(você)</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                      <td className="px-4 py-3 text-slate-600 hidden sm:table-cell">{u.email}</td>
                       <td className="px-4 py-3">
                         <RoleBadges roles={u.roles} />
                       </td>
@@ -165,7 +166,7 @@ export default function UsuarioLista() {
                         {st === 'inativo' && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Inativo</span>}
                         {!st && <span className="text-xs text-slate-400">—</span>}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 hidden sm:table-cell">
                         {u.must_change_password
                           ? <span className="text-amber-600 font-medium text-xs">Sim</span>
                           : <span className="text-slate-400 text-xs">Não</span>}
@@ -191,6 +192,7 @@ export default function UsuarioLista() {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
