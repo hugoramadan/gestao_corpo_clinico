@@ -54,19 +54,7 @@ interface Props {
   isAdmin?: boolean;
 }
 
-type TabId = 'pessoal' | 'endereco' | 'formacao' | 'crm' | 'financeiro' | 'documentos';
-
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'pessoal', label: 'Dados Pessoais' },
-  { id: 'endereco', label: 'Endereço' },
-  { id: 'formacao', label: 'Formação' },
-  { id: 'crm', label: 'CRM / Especialidades' },
-  { id: 'financeiro', label: 'Financeiro' },
-  { id: 'documentos', label: 'Upload de documentos' },
-];
-
 export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
-  const [tab, setTab] = useState<TabId>('pessoal');
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([]);
   const [comprovantes, setComprovantes] = useState<MedicoEspecialidade[]>(
     initial?.comprovantes_especialidade ?? []
@@ -192,28 +180,15 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
   const inputCls = 'w-full border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm';
   const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
 
+  const sectionCls = 'space-y-4';
+  const sectionTitleCls = 'text-base font-semibold text-slate-700 border-b border-slate-200 pb-2';
+
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200 pb-1 overflow-x-auto">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm rounded-t-lg font-medium transition flex-shrink-0 whitespace-nowrap ${
-              tab === t.id
-                ? 'bg-blue-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
 
       {/* === DADOS PESSOAIS === */}
-      {tab === 'pessoal' && (
+      <div className={sectionCls}>
+        <h3 className={sectionTitleCls}>Dados Pessoais</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className={labelCls}>Nome completo</label>
@@ -267,10 +242,11 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
             </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* === ENDEREÇO === */}
-      {tab === 'endereco' && (
+      <div className={sectionCls}>
+        <h3 className={sectionTitleCls}>Endereço</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>CEP</label>
@@ -304,10 +280,11 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
             </select>
           </div>
         </div>
-      )}
+      </div>
 
       {/* === FORMAÇÃO === */}
-      {tab === 'formacao' && (
+      <div className={sectionCls}>
+        <h3 className={sectionTitleCls}>Formação</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <label className={labelCls}>Instituição de formação (Faculdade)</label>
@@ -333,10 +310,11 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
             />
           </div>
         </div>
-      )}
+      </div>
 
       {/* === CRM / ESPECIALIDADES === */}
-      {tab === 'crm' && (
+      <div className={sectionCls}>
+        <h3 className={sectionTitleCls}>CRM / Especialidades</h3>
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -429,10 +407,11 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
             )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* === FINANCEIRO === */}
-      {tab === 'financeiro' && (
+      <div className={sectionCls}>
+        <h3 className={sectionTitleCls}>Financeiro</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Tipo de chave PIX</label>
@@ -450,10 +429,11 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
             <input className={inputCls} {...register('chave_pix')} />
           </div>
         </div>
-      )}
+      </div>
 
       {/* === UPLOAD DE DOCUMENTOS === */}
-      {tab === 'documentos' && (
+      <div className={sectionCls}>
+        <h3 className={sectionTitleCls}>Upload de Documentos</h3>
         <div className="space-y-3">
           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
             <span className="mt-0.5 shrink-0">&#9432;</span>
@@ -525,7 +505,7 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
             onChange={setCurriculoLattes}
           />
         </div>
-      )}
+      </div>
 
       {/* Submit */}
       <div className="flex justify-end pt-4 border-t border-slate-200">
