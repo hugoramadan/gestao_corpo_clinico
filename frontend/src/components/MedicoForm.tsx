@@ -195,13 +195,13 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 border-b border-slate-200 pb-1">
+      <div className="flex gap-1 border-b border-slate-200 pb-1 overflow-x-auto">
         {TABS.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 text-sm rounded-t-lg font-medium transition ${
+            className={`px-4 py-2 text-sm rounded-t-lg font-medium transition flex-shrink-0 whitespace-nowrap ${
               tab === t.id
                 ? 'bg-blue-600 text-white'
                 : 'text-slate-600 hover:bg-slate-100'

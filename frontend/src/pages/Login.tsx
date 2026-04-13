@@ -45,7 +45,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <div className="bg-white rounded-2xl shadow-md p-8 w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-md p-6 sm:p-8 w-full max-w-md">
         {logoUrl && (
           <div className="flex justify-center mb-3">
             <img src={logoUrl} alt="Logo" className="h-14 w-auto object-contain" />

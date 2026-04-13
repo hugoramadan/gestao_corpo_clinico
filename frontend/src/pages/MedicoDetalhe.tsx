@@ -82,25 +82,25 @@ export default function MedicoDetalhe() {
         )}
 
         {/* Cabeçalho */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 flex items-start gap-4">
+        <div className="bg-white rounded-2xl shadow-sm p-6 flex flex-col sm:flex-row items-start gap-4">
           {medico.foto_perfil ? (
-            <img src={mediaUrl(medico.foto_perfil)} alt="Foto" className="w-20 h-20 rounded-full object-cover border-2 border-slate-200" />
+            <img src={mediaUrl(medico.foto_perfil)} alt="Foto" className="w-20 h-20 rounded-full object-cover border-2 border-slate-200 shrink-0" />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl text-blue-400">👤</div>
+            <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl text-blue-400 shrink-0">👤</div>
           )}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-xl font-bold text-slate-800">{medico.nome_completo}</h2>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[medico.status]}`}>
                 {medico.status}
               </span>
             </div>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-slate-500 mt-1 break-words">
               CRM {medico.crm_numero}/{medico.crm_estado} · {medico.email}
             </p>
             <p className="text-xs text-slate-400 mt-1">Cadastrado em: {new Date(medico.created_at).toLocaleDateString('pt-BR')}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 sm:shrink-0">
             <Link
               to={`/medicos/${medico.id}/editar`}
               className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition"
