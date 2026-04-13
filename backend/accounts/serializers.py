@@ -120,16 +120,15 @@ class UserSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
 
     def get_status(self, obj):
-        """Retorna o status do perfil vinculado (médico ou funcionário)."""
+        """Retorna 'ativo' ou 'inativo' para exibição na lista de usuários.
+        Para médicos: pendente/ativo → 'ativo', inativo → 'inativo'.
+        Para demais: espelha is_active."""
         try:
-            return obj.medico.status
+            s = obj.medico.status
+            return "ativo" if s in ("ativo", "pendente") else "inativo"
         except AttributeError:
             pass
-        try:
-            return obj.funcionario.status
-        except AttributeError:
-            pass
-        return None
+        return "ativo" if obj.is_active else "inativo"
 
     class Meta:
         model = CustomUser
@@ -225,13 +224,12 @@ class UserManagementSerializer(serializers.ModelSerializer):
         min_length=1,
         required=False,
     )
-    funcionario = FuncionarioSerializer(required=False)
 
     class Meta:
         model = CustomUser
         fields = [
             "id", "email", "nome", "roles", "is_active",
-            "must_change_password", "date_joined", "new_password", "funcionario",
+            "must_change_password", "date_joined", "new_password",
         ]
         read_only_fields = ["id", "date_joined"]
 
@@ -251,10 +249,10 @@ class UserManagementSerializer(serializers.ModelSerializer):
 
     @transaction.atomic
     def update(self, instance, validated_data):
+        old_active = instance.is_active
         old_roles = set(instance.roles or [])
 
         new_password = validated_data.pop("new_password", None)
-        funcionario_data = validated_data.pop("funcionario", None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -262,27 +260,30 @@ class UserManagementSerializer(serializers.ModelSerializer):
             instance.set_password(new_password)
             instance.must_change_password = True
 
-        # Atualiza perfil de funcionário se enviado — só aplica se o usuário
-        # tem roles não-médicos (gestores/admins têm Funcionario, médicos não)
-        roles_after_edit = set(validated_data.get("roles", instance.roles) or [])
-        has_non_medico_role = bool(roles_after_edit - {"medico"})
-        if funcionario_data is not None and has_non_medico_role:
-            func, _ = Funcionario.objects.get_or_create(user=instance)
-            for attr, value in funcionario_data.items():
-                setattr(func, attr, value)
-            func.save()
-            # Sincroniza is_active com o status do funcionário
-            instance.is_active = (func.status == Funcionario.Status.ATIVO)
-
         instance.save()
 
         new_roles = set(instance.roles or [])
+        new_active = instance.is_active
+
+        # Sincroniza Medico.status quando is_active muda via gestão de usuário
+        if new_active != old_active:
+            from medicos.models import Medico as MedicoModel
+            try:
+                medico = instance.medico
+                if not new_active:
+                    medico.status = MedicoModel.Status.INATIVO
+                elif medico.status == MedicoModel.Status.INATIVO:
+                    # Reativar: retorna para pendente (exige reavaliação do cadastro)
+                    medico.status = MedicoModel.Status.PENDENTE
+                medico.save(update_fields=["status"])
+            except Exception:
+                pass
 
         # Reconciliação de domínio: médico adicionado → criar Medico se não existir
         if "medico" in new_roles - old_roles:
-            from medicos.models import Medico
-            if not Medico.objects.filter(user=instance).exists():
-                Medico.objects.create(
+            from medicos.models import Medico as MedicoModel
+            if not MedicoModel.objects.filter(user=instance).exists():
+                MedicoModel.objects.create(
                     user=instance,
                     nome_completo=instance.nome,
                     email=instance.email,
@@ -290,13 +291,13 @@ class UserManagementSerializer(serializers.ModelSerializer):
 
         # Reconciliação de domínio: médico removido → desvincular sem destruir o registro clínico
         if "medico" in old_roles - new_roles:
-            from medicos.models import Medico
+            from medicos.models import Medico as MedicoModel
             try:
                 medico = instance.medico
                 medico.user = None
-                medico.status = Medico.Status.INATIVO
+                medico.status = MedicoModel.Status.INATIVO
                 medico.save(update_fields=["user", "status"])
-            except Medico.DoesNotExist:
+            except Exception:
                 pass
 
         # Reconciliação de domínio: não-médico sem Funcionario → garantir que existe

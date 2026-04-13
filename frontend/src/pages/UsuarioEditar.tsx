@@ -10,9 +10,7 @@ import { ROLE_OPTIONS } from '../utils/roles';
 interface FormData {
   nome: string;
   email: string;
-  cpf: string;
-  data_nascimento: string;
-  status: 'ativo' | 'inativo';
+  is_active: boolean;
 }
 
 interface PasswordFormData {
@@ -30,6 +28,7 @@ export default function UsuarioEditar() {
   const [pwdSuccess, setPwdSuccess] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
   const [rolesError, setRolesError] = useState('');
+  const [isActive, setIsActive] = useState(true);
 
   const { register, handleSubmit, setError, reset, formState: { errors } } = useForm<FormData>();
   const { register: registerPwd, handleSubmit: handleSubmitPwd, setError: setErrorPwd, reset: resetPwd, formState: { errors: errorsPwd } } = useForm<PasswordFormData>();
@@ -41,12 +40,11 @@ export default function UsuarioEditar() {
       .then((u) => {
         setUserData(u);
         setSelectedRoles(u.roles || []);
+        setIsActive(u.is_active);
         reset({
           nome: u.nome,
           email: u.email,
-          cpf: u.funcionario?.cpf ?? '',
-          data_nascimento: u.funcionario?.data_nascimento ?? '',
-          status: (u.funcionario?.status ?? 'ativo') as 'ativo' | 'inativo',
+          is_active: u.is_active,
         });
       })
       .catch(() => navigate('/usuarios'))
@@ -64,21 +62,12 @@ export default function UsuarioEditar() {
     if (selectedRoles.length === 0) { setRolesError('Selecione ao menos um perfil.'); return; }
     setSaving(true);
     try {
-      const payload: Parameters<typeof updateUser>[1] = {
+      await updateUser(Number(id), {
         nome: data.nome,
         email: data.email,
         roles: selectedRoles,
-      };
-      if (userData?.funcionario != null) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (payload as any).funcionario = {
-          cpf: data.cpf || null,
-          data_nascimento: data.data_nascimento || null,
-          email: data.email,
-          status: data.status,
-        };
-      }
-      await updateUser(Number(id), payload);
+        is_active: isActive,
+      });
       navigate('/usuarios');
     } catch (err: unknown) {
       const e = err as { response?: { data?: Record<string, string[]> } };
@@ -126,8 +115,6 @@ export default function UsuarioEditar() {
   }
 
   if (!userData) return null;
-
-  const hasFuncionario = !!userData.funcionario;
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -181,38 +168,23 @@ export default function UsuarioEditar() {
               {rolesError && <p className="text-red-600 text-xs mt-1">{rolesError}</p>}
             </div>
 
-            {/* Campos exclusivos de funcionário (não-médico) */}
-            {hasFuncionario && (
-              <>
-                <div className="border-t border-slate-100 pt-4 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        CPF <span className="text-slate-400 font-normal">(opcional)</span>
-                      </label>
-                      <input type="text" placeholder="000.000.000-00" {...register('cpf')}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Nascimento <span className="text-slate-400 font-normal">(opcional)</span>
-                      </label>
-                      <input type="date" {...register('data_nascimento')}
-                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                    <select {...register('status')} disabled={isSelf}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400">
-                      <option value="ativo">Ativo</option>
-                      <option value="inativo">Inativo</option>
-                    </select>
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="border-t border-slate-100 pt-4">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Status da conta</label>
+              <select
+                value={isActive ? 'ativo' : 'inativo'}
+                onChange={(e) => setIsActive(e.target.value === 'ativo')}
+                disabled={isSelf}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-400"
+              >
+                <option value="ativo">Ativo</option>
+                <option value="inativo">Inativo</option>
+              </select>
+              {!isSelf && selectedRoles.includes('medico') && (
+                <p className="text-xs text-slate-400 mt-1">
+                  Inativar um médico define o cadastro médico como inativo. Reativar retorna o cadastro para &quot;pendente&quot;.
+                </p>
+              )}
+            </div>
 
             <button type="submit" disabled={saving}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 px-4 rounded-lg text-sm transition">

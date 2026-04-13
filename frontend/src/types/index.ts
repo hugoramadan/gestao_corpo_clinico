@@ -24,7 +24,7 @@ export interface User {
   date_joined: string;
   must_change_password: boolean;
   funcionario: Funcionario | null;
-  status: 'ativo' | 'inativo' | 'pendente' | null;
+  status: 'ativo' | 'inativo' | null;
 }
 
 export type Status = 'pendente' | 'ativo' | 'inativo';

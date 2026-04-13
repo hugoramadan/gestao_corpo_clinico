@@ -150,8 +150,12 @@ class UserListCreateView(generics.ListCreateAPIView):
             _valid = {"pendente", "ativo", "inativo"}
             statuses = [s.strip() for s in status_param.split(",") if s.strip() in _valid]
             if statuses:
+                # "ativo" na lista de usuários inclui médicos com status "pendente"
+                medico_statuses = list(statuses)
+                if "ativo" in statuses and "pendente" not in medico_statuses:
+                    medico_statuses.append("pendente")
                 qs = qs.filter(
-                    Q(medico__status__in=statuses) | Q(funcionario__status__in=statuses)
+                    Q(medico__status__in=medico_statuses) | Q(funcionario__status__in=statuses)
                 ).distinct()
         return qs
 
@@ -209,12 +213,10 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     @staticmethod
     def _get_perfil_status(user):
+        """Retorna 'ativo' ou 'inativo' baseado em is_active e Medico.status."""
         try:
-            return user.medico.status
+            s = user.medico.status
+            return "ativo" if s in ("ativo", "pendente") else "inativo"
         except Exception:
             pass
-        try:
-            return user.funcionario.status
-        except Exception:
-            pass
-        return None
+        return "ativo" if user.is_active else "inativo"

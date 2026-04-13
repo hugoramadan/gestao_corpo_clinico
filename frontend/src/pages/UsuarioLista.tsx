@@ -14,7 +14,6 @@ const ROLE_COLOR: Record<string, string> = {
 
 const STATUS_OPTIONS = [
   { value: 'ativo', label: 'Ativo', color: 'bg-green-100 text-green-700' },
-  { value: 'pendente', label: 'Pendente', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'inativo', label: 'Inativo', color: 'bg-red-100 text-red-600' },
 ];
 
@@ -36,7 +35,7 @@ export default function UsuarioLista() {
   const [users, setUsers] = useState<User[]>([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string[]>(['ativo', 'pendente']);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>(['ativo']);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -163,7 +162,6 @@ export default function UsuarioLista() {
                       </td>
                       <td className="px-4 py-3">
                         {st === 'ativo' && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Ativo</span>}
-                        {st === 'pendente' && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">Pendente</span>}
                         {st === 'inativo' && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600">Inativo</span>}
                         {!st && <span className="text-xs text-slate-400">—</span>}
                       </td>
