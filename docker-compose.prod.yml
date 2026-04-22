@@ -51,31 +51,28 @@ services:
       context: .
       dockerfile: nginx/Dockerfile
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - static_files:/var/www/static:ro
       - media_files:/var/www/media:ro
-      - certbot_www:/var/www/certbot:ro
-      - certbot_certs:/etc/letsencrypt:ro
     environment:
-      - DOMAIN=${DOMAIN}
+      - DOMAIN=cadastro.hugoramadan.com.br
     depends_on:
       - backend
-
-  certbot:
-    image: certbot/certbot:latest
-    volumes:
-      - certbot_www:/var/www/certbot
-      - certbot_certs:/etc/letsencrypt
-    # Usado manualmente para emitir/renovar certificados — não sobe automaticamente
-    profiles:
-      - certbot
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.corpoclinico.rule=Host(`cadastro.hugoramadan.com.br`)
+      - traefik.http.routers.corpoclinico.entrypoints=websecure
+      - traefik.http.routers.corpoclinico.tls.certresolver=letsencrypt
+      - traefik.http.services.corpoclinico.loadbalancer.server.port=80
+    networks:
+      - default
+      - traefik-proxy
 
 volumes:
   postgres_data:
   static_files:
   media_files:
-  certbot_www:
-  certbot_certs:
+
+networks:
+  traefik-proxy:
+    external: true
