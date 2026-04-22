@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN addgroup --system app && adduser --system --ingroup app --home /home/app --create-home app
+RUN addgroup --system app && adduser --system --ingroup app --home /home/app app
 USER app
 
 EXPOSE 8000
