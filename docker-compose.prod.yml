@@ -55,12 +55,12 @@ services:
       - static_files:/var/www/static:ro
       - media_files:/var/www/media:ro
     environment:
-      - DOMAIN=cadastro.hugoramadan.com.br
+      - DOMAIN=cadastro.epaqc.com.br
     depends_on:
       - backend
     labels:
       - traefik.enable=true
-      - traefik.http.routers.corpoclinico.rule=Host(`cadastro.hugoramadan.com.br`)
+      - traefik.http.routers.corpoclinico.rule=Host(`cadastro.epaqc.com.br`)
       - traefik.http.routers.corpoclinico.entrypoints=websecure
       - traefik.http.routers.corpoclinico.tls.certresolver=letsencrypt
       - traefik.http.services.corpoclinico.loadbalancer.server.port=80
