@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getMeuCadastro, updateMedico, createMedico } from '../api/medicos';
 import { useAuth } from '../contexts/AuthContext';
 import Navbar from '../components/Navbar';
@@ -8,6 +9,7 @@ import type { Medico } from '../types';
 
 export default function Perfil() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [medico, setMedico] = useState<Medico | null>(null);
   const [loading, setLoading] = useState(true);
   const [noCadastro, setNoCadastro] = useState(false);
@@ -23,13 +25,11 @@ export default function Perfil() {
 
   const handleSubmit = async (fd: FormData) => {
     if (medico) {
-      const updated = await updateMedico(medico.id, fd);
-      setMedico(updated);
+      await updateMedico(medico.id, fd);
     } else {
-      const created = await createMedico(fd);
-      setMedico(created);
-      setNoCadastro(false);
+      await createMedico(fd);
     }
+    navigate('/dashboard');
   };
 
   return (
@@ -70,7 +70,7 @@ export default function Perfil() {
                   Você ainda não possui cadastro médico. Preencha os dados abaixo.
                 </div>
               )}
-              <MedicoForm initial={medico ?? undefined} onSubmit={handleSubmit} />
+              <MedicoForm initial={medico ?? undefined} onSubmit={handleSubmit} onCancel={() => navigate('/dashboard')} />
             </>
           )}
         </div>

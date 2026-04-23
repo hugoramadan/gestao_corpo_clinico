@@ -51,10 +51,11 @@ interface FormValues {
 interface Props {
   initial?: Medico;
   onSubmit: (data: FormData) => Promise<void>;
+  onCancel?: () => void;
   isAdmin?: boolean;
 }
 
-export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
+export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Props) {
   const [especialidades, setEspecialidades] = useState<Especialidade[]>([]);
   const [comprovantes, setComprovantes] = useState<MedicoEspecialidade[]>(
     initial?.comprovantes_especialidade ?? []
@@ -508,7 +509,17 @@ export default function MedicoForm({ initial, onSubmit, isAdmin }: Props) {
       </div>
 
       {/* Submit */}
-      <div className="flex justify-end pt-4 border-t border-slate-200">
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={submitting}
+            className="border border-slate-300 text-slate-600 hover:bg-slate-50 font-semibold px-8 py-2 rounded-lg transition disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+        )}
         <button
           type="submit"
           disabled={submitting}

@@ -23,9 +23,8 @@ export default function MedicoEditar() {
 
   const handleSubmit = async (fd: FormData) => {
     if (!id) return;
-    const updated = await updateMedico(Number(id), fd);
-    setMedico(updated);
-    navigate(`/medicos/${id}`);
+    await updateMedico(Number(id), fd);
+    navigate('/dashboard');
   };
 
   return (
@@ -53,6 +52,7 @@ export default function MedicoEditar() {
               <MedicoForm
                 initial={medico}
                 onSubmit={handleSubmit}
+                onCancel={() => navigate('/dashboard')}
                 isAdmin={isRole('gestor', 'admin')}
               />
             )
