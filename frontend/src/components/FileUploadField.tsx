@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const MAX_SIZE_MB = 4;
 
@@ -16,27 +16,49 @@ export default function FileUploadField({ label, name, accept, currentUrl, onCha
   const inputRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState<string>('');
   const [sizeError, setSizeError] = useState<string>('');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const isImage = !!accept && accept.includes('image');
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
     if (file && file.size > (maxSizeMB * 1024 * 1024)) {
       setSizeError(`Arquivo muito grande. Máximo permitido: ${maxSizeMB} MB.`);
       setFileName('');
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
       onChange(null);
-      // Limpa o input para permitir reselecionar o mesmo arquivo
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
     setSizeError('');
     setFileName(file?.name ?? '');
+    if (isImage) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(file ? URL.createObjectURL(file) : null);
+    }
     onChange(file);
   };
+
+  const displayUrl = previewUrl ?? (isImage ? currentUrl ?? null : null);
 
   return (
     <div>
       <label className="block text-sm font-medium text-slate-700 mb-1">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
+      {isImage && displayUrl && (
+        <img
+          src={displayUrl}
+          alt="Prévia"
+          className="w-20 h-20 rounded-full object-cover mb-2 border border-slate-200"
+        />
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -48,7 +70,7 @@ export default function FileUploadField({ label, name, accept, currentUrl, onCha
         <span className={`text-sm truncate min-w-0 max-w-xs ${sizeError ? 'text-red-600 font-medium' : 'text-slate-500'}`}>
           {sizeError || fileName || (currentUrl ? 'Arquivo atual' : 'Nenhum arquivo selecionado')}
         </span>
-        {currentUrl && !fileName && !sizeError && (
+        {currentUrl && !fileName && !sizeError && !isImage && (
           <a
             href={currentUrl}
             target="_blank"
