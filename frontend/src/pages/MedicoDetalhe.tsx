@@ -7,10 +7,18 @@ import CadastroIncompletoAviso from '../components/CadastroIncompletoAviso';
 import type { Medico } from '../types';
 import { mediaUrl } from '../utils/media';
 
-const STATUS_COLORS = {
-  ativo: 'bg-green-100 text-green-700',
+const STATUS_COLORS: Record<string, string> = {
+  ativo_com_contrato: 'bg-green-100 text-green-700',
+  ativo_sem_contrato: 'bg-teal-100 text-teal-700',
   inativo: 'bg-red-100 text-red-600',
   pendente: 'bg-yellow-100 text-yellow-700',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  ativo_com_contrato: 'Ativo em contrato',
+  ativo_sem_contrato: 'Ativo sem contrato',
+  inativo: 'Inativo',
+  pendente: 'Pendente',
 };
 
 function Field({ label, value }: { label: string; value?: string | number | null }) {
@@ -92,7 +100,7 @@ export default function MedicoDetalhe() {
             <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-xl font-bold text-slate-800">{medico.nome_completo}</h2>
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_COLORS[medico.status]}`}>
-                {medico.status}
+                {STATUS_LABELS[medico.status] ?? medico.status}
               </span>
             </div>
             <p className="text-sm text-slate-500 mt-1 break-words">

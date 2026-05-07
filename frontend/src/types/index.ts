@@ -27,7 +27,7 @@ export interface User {
   status: 'ativo' | 'inativo' | null;
 }
 
-export type Status = 'pendente' | 'ativo' | 'inativo';
+export type Status = 'pendente' | 'ativo_com_contrato' | 'ativo_sem_contrato' | 'inativo';
 
 export type TipoChavePix = 'cpf' | 'cnpj' | 'email' | 'telefone' | 'aleatoria';
 

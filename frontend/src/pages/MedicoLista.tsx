@@ -6,13 +6,22 @@ import type { MedicoListItem, Status } from '../types';
 import { mediaUrl } from '../utils/media';
 
 const STATUS_COLORS: Record<Status, string> = {
-  ativo: 'bg-green-100 text-green-700',
+  ativo_com_contrato: 'bg-green-100 text-green-700',
+  ativo_sem_contrato: 'bg-teal-100 text-teal-700',
   inativo: 'bg-red-100 text-red-600',
   pendente: 'bg-yellow-100 text-yellow-700',
 };
 
+const STATUS_LABELS: Record<Status, string> = {
+  ativo_com_contrato: 'Ativo em contrato',
+  ativo_sem_contrato: 'Ativo sem contrato',
+  inativo: 'Inativo',
+  pendente: 'Pendente',
+};
+
 const STATUS_OPTIONS: { value: Status; label: string }[] = [
-  { value: 'ativo', label: 'Ativo' },
+  { value: 'ativo_com_contrato', label: 'Ativo em contrato' },
+  { value: 'ativo_sem_contrato', label: 'Ativo sem contrato' },
   { value: 'pendente', label: 'Pendente' },
   { value: 'inativo', label: 'Inativo' },
 ];
@@ -21,7 +30,7 @@ export default function MedicoLista() {
   const [medicos, setMedicos] = useState<MedicoListItem[]>([]);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<Status[]>(['ativo', 'pendente']);
+  const [selectedStatus, setSelectedStatus] = useState<Status[]>(['ativo_com_contrato', 'ativo_sem_contrato', 'pendente']);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -127,7 +136,7 @@ export default function MedicoLista() {
                     <td className="px-4 py-3 text-slate-500 hidden lg:table-cell">{m.email}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_COLORS[m.status]}`}>
-                        {m.status}
+                        {STATUS_LABELS[m.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">

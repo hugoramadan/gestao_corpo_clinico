@@ -237,7 +237,8 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
               <label className={labelCls}>Status</label>
               <select className={inputCls} {...register('status')}>
                 <option value="pendente">Pendente</option>
-                <option value="ativo">Ativo</option>
+                <option value="ativo_com_contrato">Ativo em contrato</option>
+                <option value="ativo_sem_contrato">Ativo sem contrato</option>
                 <option value="inativo">Inativo</option>
               </select>
             </div>

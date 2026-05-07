@@ -151,15 +151,22 @@ class UserListCreateView(generics.ListCreateAPIView):
         ).order_by("nome")
         status_param = self.request.query_params.get("status")
         if status_param:
-            _valid = {"pendente", "ativo", "inativo"}
+            _valid = {"pendente", "ativo_com_contrato", "ativo_sem_contrato", "inativo", "ativo"}
             statuses = [s.strip() for s in status_param.split(",") if s.strip() in _valid]
             if statuses:
-                # "ativo" na lista de usuários inclui médicos com status "pendente"
+                # "ativo" (legado) na lista de usuários expande para todos os status ativos
                 medico_statuses = list(statuses)
-                if "ativo" in statuses and "pendente" not in medico_statuses:
-                    medico_statuses.append("pendente")
+                if "ativo" in medico_statuses:
+                    medico_statuses.remove("ativo")
+                    for s in ("ativo_com_contrato", "ativo_sem_contrato", "pendente"):
+                        if s not in medico_statuses:
+                            medico_statuses.append(s)
+                elif "ativo_com_contrato" in medico_statuses or "ativo_sem_contrato" in medico_statuses:
+                    if "pendente" not in medico_statuses:
+                        medico_statuses.append("pendente")
+                func_statuses = ["ativo" if s in ("ativo_com_contrato", "ativo_sem_contrato") else s for s in statuses]
                 qs = qs.filter(
-                    Q(medico__status__in=medico_statuses) | Q(funcionario__status__in=statuses)
+                    Q(medico__status__in=medico_statuses) | Q(funcionario__status__in=func_statuses)
                 ).distinct()
         return qs
 
@@ -215,12 +222,14 @@ class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    _MEDICO_ATIVOS = {"ativo_com_contrato", "ativo_sem_contrato", "pendente"}
+
     @staticmethod
     def _get_perfil_status(user):
         """Retorna 'ativo' ou 'inativo' baseado em is_active e Medico.status."""
         try:
             s = user.medico.status
-            return "ativo" if s in ("ativo", "pendente") else "inativo"
+            return "ativo" if s in UserDetailView._MEDICO_ATIVOS else "inativo"
         except Exception:
             pass
         return "ativo" if user.is_active else "inativo"

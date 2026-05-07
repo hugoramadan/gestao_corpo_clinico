@@ -144,7 +144,8 @@ class Especialidade(models.Model):
 class Medico(models.Model):
     class Status(models.TextChoices):
         PENDENTE = "pendente", "Pendente"
-        ATIVO = "ativo", "Ativo"
+        ATIVO_COM_CONTRATO = "ativo_com_contrato", "Ativo em contrato"
+        ATIVO_SEM_CONTRATO = "ativo_sem_contrato", "Ativo sem contrato"
         INATIVO = "inativo", "Inativo"
 
     class TipoChavePix(models.TextChoices):
@@ -240,7 +241,7 @@ class Medico(models.Model):
 
     # --- Status ---
     status = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=Status.choices,
         default=Status.PENDENTE,
         verbose_name="Status",

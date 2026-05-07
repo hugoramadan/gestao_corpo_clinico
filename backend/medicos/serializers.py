@@ -98,7 +98,8 @@ class MedicoSerializer(serializers.ModelSerializer):
             and instance.user is not None
             and request.user == instance.user
         )
-        if editor_is_owner and result.status == "ativo" and not result.cadastro_completo():
+        _ativos = {"ativo_com_contrato", "ativo_sem_contrato"}
+        if editor_is_owner and result.status in _ativos and not result.cadastro_completo():
             result.status = "pendente"
             result.save(update_fields=["status"])
 

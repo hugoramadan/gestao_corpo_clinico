@@ -119,13 +119,15 @@ class UserSerializer(serializers.ModelSerializer):
     funcionario = FuncionarioSerializer(read_only=True)
     status = serializers.SerializerMethodField()
 
+    _MEDICO_ATIVOS = {"ativo_com_contrato", "ativo_sem_contrato", "pendente"}
+
     def get_status(self, obj):
         """Retorna 'ativo' ou 'inativo' para exibição na lista de usuários.
-        Para médicos: pendente/ativo → 'ativo', inativo → 'inativo'.
+        Para médicos: pendente/ativo_* → 'ativo', inativo → 'inativo'.
         Para demais: espelha is_active."""
         try:
             s = obj.medico.status
-            return "ativo" if s in ("ativo", "pendente") else "inativo"
+            return "ativo" if s in self._MEDICO_ATIVOS else "inativo"
         except AttributeError:
             pass
         return "ativo" if obj.is_active else "inativo"

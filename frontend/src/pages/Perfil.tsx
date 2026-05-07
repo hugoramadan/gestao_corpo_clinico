@@ -50,11 +50,14 @@ export default function Perfil() {
             </div>
             {medico && (
               <span className={`text-xs font-semibold px-3 py-1 rounded-full shrink-0 ${
-                medico.status === 'ativo' ? 'bg-green-100 text-green-700' :
+                medico.status === 'ativo_com_contrato' ? 'bg-green-100 text-green-700' :
+                medico.status === 'ativo_sem_contrato' ? 'bg-teal-100 text-teal-700' :
                 medico.status === 'inativo' ? 'bg-red-100 text-red-600' :
                 'bg-yellow-100 text-yellow-700'
               }`}>
-                {medico.status.charAt(0).toUpperCase() + medico.status.slice(1)}
+                {medico.status === 'ativo_com_contrato' ? 'Ativo em contrato' :
+                 medico.status === 'ativo_sem_contrato' ? 'Ativo sem contrato' :
+                 medico.status === 'inativo' ? 'Inativo' : 'Pendente'}
               </span>
             )}
           </div>
