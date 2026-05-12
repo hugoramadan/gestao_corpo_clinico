@@ -177,7 +177,7 @@ frontend/src/
 - **Auto-exclusão bloqueada:** Admin não pode excluir a própria conta. Implementado em duas camadas: backend (HTTP 403 em `UserDetailView.destroy()`) e frontend (guard no `handleDelete` + botão oculto).
 - **Exclusão restrita:** Usuário só pode ser excluído se status for `inativo`.
 - **Auto-edição restrita:** `UserManagementSerializer` impede que o usuário altere seus próprios `roles` ou `is_active`.
-- **Sincronização User↔Medico:** Quando admin altera `is_active` de um usuário médico, `Medico.status` é sincronizado (inativo↔ativo). Médico que edita o próprio perfil e torna o cadastro incompleto regride de `ativo` para `pendente`.
+- **Sincronização User↔Medico:** Quando admin altera `is_active` de um usuário médico, `Medico.status` é sincronizado (`inativo` ↔ `pendente` ao reativar). Médico que edita o próprio perfil e torna o cadastro incompleto regride de `ativo_com_contrato`/`ativo_sem_contrato` para `pendente`.
 - **Filtro de status na lista de usuários:** Filtrar `?status=ativo` inclui médicos com status `pendente` (considerados ativos no sistema).
 - **Reconciliação de roles:** `UserManagementSerializer.update()` cria/vincula `Medico` se role `medico` foi adicionada; desvincula e marca `inativo` se removida. Cria `Funcionario` se necessário para não-médicos.
 - **CPF:** Validado via `validate_cpf_digits()` em `core/validators.py` (algoritmo oficial, dois dígitos verificadores). Único entre `Medico` e entre `Funcionario`.
@@ -212,6 +212,8 @@ frontend/src/
 | accounts | 0005_criar_funcionarios_existentes (data migration: cria Funcionario para users existentes) |
 | medicos | 0001..0007 (legado — campos, documentos, RG/CPF consolidação, curriculo_lattes) |
 | medicos | 0008_cpf_nullable (CPF nullable + verbose names em campos de documento) |
+| medicos | 0009_seed_especialidades (popula especialidades padrão) |
+| medicos | 0010_split_status_ativo (divide status "ativo" em "ativo_com_contrato" e "ativo_sem_contrato"; max_length 10→20) |
 | core | 0001_configuracao (cria model Configuracao singleton) |
 
 ---
@@ -246,6 +248,11 @@ frontend/src/
   ```bash
   docker compose -f docker-compose.prod.yml build --no-cache nginx && docker compose -f docker-compose.prod.yml up -d nginx
   ```
+- **Backend:** imagem Docker buildada a partir de `backend/Dockerfile`. Rebuild necessário após qualquer mudança no backend (models, views, serializers, migrations, requirements). O container aplica migrations automaticamente ao subir (`python manage.py migrate --noinput` no `command` do compose):
+  ```bash
+  docker compose -f docker-compose.prod.yml build backend && docker compose -f docker-compose.prod.yml up -d backend
+  ```
+  > **Atenção:** não basta fazer `git pull` no servidor — é obrigatório rebuildar a imagem, pois o backend usa `build:` e não volume mount. Código novo só entra depois do rebuild.
 - **Título da aba:** `frontend/index.html` — "Cadastro médico", sem favicon
 - **ConfigContext:** aplica `--color-primary` imediatamente com o valor padrão antes de carregar a API, evitando elementos invisíveis no carregamento inicial; tolera falha da API sem quebrar o app
 
