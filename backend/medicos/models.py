@@ -270,6 +270,17 @@ class Medico(models.Model):
         # Ao menos uma especialidade deve estar cadastrada
         if self.pk and not self.comprovantes_especialidade.exists():
             pendentes.append({"campo": "comprovante_especialidade", "label": "Comprovante de especialidade"})
+        # Especialidades cadastradas sem comprovante enviado
+        if self.pk:
+            from django.db.models import Q
+            sem_doc = self.comprovantes_especialidade.filter(
+                Q(comprovante="") | Q(comprovante__isnull=True)
+            ).select_related("especialidade")
+            for comp in sem_doc:
+                pendentes.append({
+                    "campo": f"comprovante_esp_{comp.especialidade_id}",
+                    "label": f"Comprovante — {comp.especialidade.nome}",
+                })
         return pendentes
 
     def cadastro_completo(self):
