@@ -118,4 +118,5 @@ export interface MedicoListItem {
   status: Status;
   foto_perfil: string | null;
   created_at: string;
+  cadastro_completo: boolean;
 }

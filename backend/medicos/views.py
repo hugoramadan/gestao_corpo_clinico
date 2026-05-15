@@ -20,7 +20,10 @@ class MedicoListCreateView(generics.ListCreateAPIView):
     ordering = ["nome_completo"]
 
     def get_queryset(self):
-        qs = Medico.objects.select_related("user").prefetch_related("especialidades")
+        qs = Medico.objects.select_related("user").prefetch_related(
+            "especialidades",
+            "comprovantes_especialidade",
+        )
         status_param = self.request.query_params.get("status")
         if status_param:
             statuses = [s.strip() for s in status_param.split(",") if s.strip()]
