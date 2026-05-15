@@ -22,7 +22,7 @@ class MedicoListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         qs = Medico.objects.select_related("user").prefetch_related(
             "especialidades",
-            "comprovantes_especialidade",
+            "comprovantes_especialidade__especialidade",
         )
         status_param = self.request.query_params.get("status")
         if status_param:
