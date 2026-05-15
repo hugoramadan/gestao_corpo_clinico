@@ -271,11 +271,12 @@ class Medico(models.Model):
         if self.pk and not self.comprovantes_especialidade.exists():
             pendentes.append({"campo": "comprovante_especialidade", "label": "Comprovante de especialidade"})
         # Especialidades cadastradas sem comprovante enviado
+        # Usa .all() + filtro Python para respeitar o prefetch cache por instância.
+        # .filter() num queryset prefetchado usa o SQL batch (medico_id IN [...])
+        # e retorna resultados de outros médicos, corrompendo o cálculo na listagem.
         if self.pk:
-            from django.db.models import Q
-            sem_doc = self.comprovantes_especialidade.filter(
-                Q(comprovante="") | Q(comprovante__isnull=True)
-            ).select_related("especialidade")
+            all_comps = list(self.comprovantes_especialidade.all())
+            sem_doc = [comp for comp in all_comps if not comp.comprovante]
             for comp in sem_doc:
                 pendentes.append({
                     "campo": f"comprovante_esp_{comp.especialidade_id}",
