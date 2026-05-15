@@ -135,9 +135,29 @@ export default function MedicoLista() {
                     </td>
                     <td className="px-4 py-3 text-slate-500 hidden lg:table-cell">{m.email}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_COLORS[m.status]}`}>
-                        {STATUS_LABELS[m.status]}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${STATUS_COLORS[m.status]}`}>
+                          {STATUS_LABELS[m.status]}
+                        </span>
+                        {m.status === 'pendente' && (
+                          m.cadastro_completo
+                            ? (
+                              <span
+                                className="text-green-600 font-bold text-sm leading-none"
+                                title="Cadastro completo"
+                              >
+                                ✓
+                              </span>
+                            ) : (
+                              <span
+                                className="text-red-500 font-bold text-sm leading-none"
+                                title="Cadastro incompleto"
+                              >
+                                ✗
+                              </span>
+                            )
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link to={`/medicos/${m.id}`} className="text-blue-600 hover:underline text-sm">

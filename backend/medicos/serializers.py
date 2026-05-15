@@ -21,13 +21,17 @@ class MedicoEspecialidadeSerializer(serializers.ModelSerializer):
 class MedicoListSerializer(serializers.ModelSerializer):
     """Serializer resumido para listagem."""
     especialidades = EspecialidadeSerializer(many=True, read_only=True)
+    cadastro_completo = serializers.SerializerMethodField()
+
+    def get_cadastro_completo(self, obj):
+        return obj.cadastro_completo()
 
     class Meta:
         model = Medico
         fields = [
             "id", "nome_completo", "cpf", "crm_numero", "crm_estado",
             "especialidades", "email", "telefone", "status",
-            "foto_perfil", "created_at",
+            "foto_perfil", "created_at", "cadastro_completo",
         ]
 
 
