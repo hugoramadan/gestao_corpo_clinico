@@ -30,6 +30,17 @@
 
 ---
 
+## Componentes notáveis
+
+### CadastroIncompletoAviso (`components/CadastroIncompletoAviso.tsx`)
+- Recebe `camposPendentes` e `status` (opcional)
+- **Incompleto** (`camposPendentes.length > 0`): banner âmbar com lista expansível de campos pendentes
+- **Completo + pendente** (`camposPendentes.length === 0 && status === 'pendente'`): banner verde "Cadastro completo — Aguardando validação pelo administrador"
+- **Outros casos**: retorna `null`
+- Usado em `Perfil.tsx` e `MedicoDetalhe.tsx`, exibido apenas quando `status === 'pendente'`
+
+---
+
 ## Estrutura de pastas relevante
 
 ```

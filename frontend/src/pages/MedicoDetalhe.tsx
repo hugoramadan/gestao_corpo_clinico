@@ -84,9 +84,9 @@ export default function MedicoDetalhe() {
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
 
-        {/* Aviso de cadastro incompleto */}
-        {medico && !medico.cadastro_completo && (
-          <CadastroIncompletoAviso camposPendentes={medico.campos_pendentes} />
+        {/* Aviso de cadastro incompleto ou aguardando validação */}
+        {medico && medico.status === 'pendente' && (
+          <CadastroIncompletoAviso camposPendentes={medico.campos_pendentes} status={medico.status} />
         )}
 
         {/* Cabeçalho */}
