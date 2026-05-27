@@ -213,6 +213,7 @@ for u in CustomUser.objects.all():
 docker compose -f docker-compose.prod.yml exec backend python manage.py changepassword email@exemplo.com
 
 # Reiniciar um serviço
+docker compose -f docker-compose.prod.yml restart frontend
 docker compose -f docker-compose.prod.yml restart backend
 docker compose -f docker-compose.prod.yml restart nginx
 ```
