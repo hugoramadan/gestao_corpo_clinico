@@ -2,11 +2,32 @@ import { useState } from 'react';
 
 interface Props {
   camposPendentes: { campo: string; label: string }[];
+  status?: string;
 }
 
-export default function CadastroIncompletoAviso({ camposPendentes }: Props) {
+export default function CadastroIncompletoAviso({ camposPendentes, status }: Props) {
   const [expandido, setExpandido] = useState(false);
 
+  // Cadastro completo mas ainda aguardando validação do admin
+  if (camposPendentes.length === 0 && status === 'pendente') {
+    return (
+      <div className="bg-green-50 border border-green-300 rounded-xl px-4 py-4">
+        <div className="flex items-start gap-3">
+          <span className="text-green-500 text-xl mt-0.5">✅</span>
+          <div className="flex-1">
+            <p className="text-green-800 font-semibold text-sm">
+              Cadastro completo — Aguardando validação pelo administrador
+            </p>
+            <p className="text-green-700 text-sm mt-1">
+              Todos os campos foram preenchidos. Assim que o administrador validar sua documentação, seu perfil será ativado.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Cadastro incompleto
   if (camposPendentes.length === 0) return null;
 
   return (

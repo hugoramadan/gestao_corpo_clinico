@@ -37,9 +37,9 @@ export default function Perfil() {
       <Navbar />
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-4">
 
-        {/* Aviso de cadastro incompleto */}
-        {medico && !medico.cadastro_completo && (
-          <CadastroIncompletoAviso camposPendentes={medico.campos_pendentes} />
+        {/* Aviso de cadastro incompleto ou aguardando validação */}
+        {medico && (medico.status === 'pendente') && (
+          <CadastroIncompletoAviso camposPendentes={medico.campos_pendentes} status={medico.status} />
         )}
 
         <div className="bg-white rounded-2xl shadow-sm p-6">
