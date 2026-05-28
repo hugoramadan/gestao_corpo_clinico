@@ -14,7 +14,7 @@ class MedicoEspecialidadeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MedicoEspecialidade
-        fields = ["id", "especialidade", "especialidade_nome", "comprovante", "data_upload"]
+        fields = ["id", "especialidade", "especialidade_nome", "comprovante", "rqe_numero", "sem_rqe", "data_upload"]
         read_only_fields = ["id", "data_upload"]
 
 

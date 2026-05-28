@@ -282,6 +282,12 @@ class Medico(models.Model):
                     "campo": f"comprovante_esp_{comp.especialidade_id}",
                     "label": f"Comprovante — {comp.especialidade.nome}",
                 })
+            for comp in all_comps:
+                if not comp.sem_rqe and not comp.rqe_numero:
+                    pendentes.append({
+                        "campo": f"rqe_esp_{comp.especialidade_id}",
+                        "label": f"RQE — {comp.especialidade.nome}",
+                    })
         return pendentes
 
     def cadastro_completo(self):
@@ -306,6 +312,13 @@ class MedicoEspecialidade(models.Model):
         blank=True,
         verbose_name="Comprovante de especialidade",
     )
+    rqe_numero = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name="Número do RQE",
+    )
+    sem_rqe = models.BooleanField(default=False, verbose_name="Não possui RQE")
     data_upload = models.DateTimeField(auto_now_add=True)
 
     class Meta:
