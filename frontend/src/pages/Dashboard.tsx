@@ -49,6 +49,17 @@ export default function Dashboard() {
               <p className="text-sm text-slate-500">Gerencie contas de administradores, gestores e médicos.</p>
             </Link>
           )}
+
+          {isRole('admin') && (
+            <Link
+              to="/relatorios"
+              className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition border border-slate-200"
+            >
+              <div className="text-3xl mb-3">📊</div>
+              <h3 className="font-semibold text-slate-800 mb-1">Relatórios</h3>
+              <p className="text-sm text-slate-500">Exporte relatórios personalizados dos médicos cadastrados.</p>
+            </Link>
+          )}
         </div>
       </div>
     </div>

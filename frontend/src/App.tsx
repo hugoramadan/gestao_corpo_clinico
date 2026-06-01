@@ -18,6 +18,7 @@ import UsuarioLista from './pages/UsuarioLista';
 import UsuarioNovo from './pages/UsuarioNovo';
 import UsuarioEditar from './pages/UsuarioEditar';
 import Configuracoes from './pages/Configuracoes';
+import Relatorios from './pages/Relatorios';
 
 export default function App() {
   return (
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/usuarios/novo" element={<ProtectedRoute roles={['admin', 'gestor']}><UsuarioNovo /></ProtectedRoute>} />
           <Route path="/usuarios/:id/editar" element={<ProtectedRoute roles={['admin']}><UsuarioEditar /></ProtectedRoute>} />
           <Route path="/configuracoes" element={<ProtectedRoute roles={['admin']}><Configuracoes /></ProtectedRoute>} />
+          <Route path="/relatorios" element={<ProtectedRoute roles={['admin']}><Relatorios /></ProtectedRoute>} />
 
           {/* Redirect raiz */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

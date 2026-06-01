@@ -90,6 +90,7 @@ frontend/src/
 | `/usuarios/novo` | UsuarioNovo.tsx | **admin, gestor** |
 | `/usuarios/:id/editar` | UsuarioEditar.tsx | admin |
 | `/configuracoes` | Configuracoes.tsx | admin |
+| `/relatorios` | Relatorios.tsx | admin |
 
 > **Arquivo órfão:** `MedicoNovo.tsx` existe em `frontend/src/pages/` mas **não está registrado em `App.tsx`** (removido do roteamento). Não usar — criação de médico com login é via `/usuarios/novo` (role=medico).
 
@@ -120,6 +121,7 @@ frontend/src/
 | GET/POST | `{id}/comprovantes/` | Lista / adiciona comprovante de especialidade |
 | DELETE | `{id}/comprovantes/{cid}/` | Remove comprovante de especialidade |
 | GET/POST | `especialidades/` | Especialidades disponíveis |
+| GET | `relatorio/` | Exporta CSV com campos/filtros selecionados — admin only |
 
 ### Usuários (`/api/users/`)
 | Método | Rota | Acesso | Descrição |

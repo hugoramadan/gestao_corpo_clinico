@@ -1,7 +1,11 @@
+import csv
+
+from django.http import HttpResponse
 from rest_framework import status, generics, filters
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .models import Medico, Especialidade, MedicoEspecialidade
 from .serializers import (
@@ -11,6 +15,86 @@ from .serializers import (
     MedicoEspecialidadeSerializer,
 )
 from .permissions import IsGestorOrAdmin, IsAdminOnly, IsMedicoOwnerOrStaff
+
+_STATUS_LABEL = {
+    "pendente": "Pendente",
+    "ativo_com_contrato": "Ativo com Contrato",
+    "ativo_sem_contrato": "Ativo sem Contrato",
+    "inativo": "Inativo",
+}
+
+_PIX_LABEL = {
+    "cpf": "CPF",
+    "cnpj": "CNPJ",
+    "email": "E-mail",
+    "telefone": "Telefone",
+    "aleatoria": "Aleatória",
+}
+
+FIELD_MAP = {
+    "nome_completo":       ("Nome Completo",         lambda m: m.nome_completo or ""),
+    "cpf":                 ("CPF",                   lambda m: m.cpf or ""),
+    "data_nascimento":     ("Data de Nascimento",    lambda m: m.data_nascimento.strftime("%d/%m/%Y") if m.data_nascimento else ""),
+    "rg_numero":           ("RG",                    lambda m: m.rg_numero or ""),
+    "estado_civil":        ("Estado Civil",          lambda m: m.get_estado_civil_display() if m.estado_civil else ""),
+    "email":               ("E-mail",                lambda m: m.email or ""),
+    "telefone":            ("Telefone",              lambda m: m.telefone or ""),
+    "cep":                 ("CEP",                   lambda m: m.cep or ""),
+    "logradouro":          ("Logradouro",            lambda m: m.logradouro or ""),
+    "numero":              ("Número",                lambda m: m.numero or ""),
+    "complemento":         ("Complemento",           lambda m: m.complemento or ""),
+    "bairro":              ("Bairro",                lambda m: m.bairro or ""),
+    "cidade":              ("Cidade",                lambda m: m.cidade or ""),
+    "estado":              ("Estado (UF)",           lambda m: m.estado or ""),
+    "instituicao_formacao":("Instituição de Formação", lambda m: m.instituicao_formacao or ""),
+    "ano_formatura":       ("Ano de Formatura",      lambda m: str(m.ano_formatura) if m.ano_formatura else ""),
+    "link_lattes":         ("Link Lattes",           lambda m: m.link_lattes or ""),
+    "crm_numero":          ("CRM",                   lambda m: m.crm_numero or ""),
+    "crm_estado":          ("UF CRM",                lambda m: m.crm_estado or ""),
+    "especialidades":      ("Especialidades",        lambda m: "; ".join(e.nome for e in m.especialidades.all())),
+    "tipo_chave_pix":      ("Tipo Chave PIX",        lambda m: _PIX_LABEL.get(m.tipo_chave_pix, m.tipo_chave_pix or "")),
+    "chave_pix":           ("Chave PIX",             lambda m: m.chave_pix or ""),
+    "status":              ("Status",                lambda m: _STATUS_LABEL.get(m.status, m.status or "")),
+    "cadastro_completo":   ("Cadastro Completo",     lambda m: "Sim" if m.cadastro_completo() else "Não"),
+    "created_at":          ("Data de Cadastro",      lambda m: m.created_at.strftime("%d/%m/%Y %H:%M") if m.created_at else ""),
+    "updated_at":          ("Última Atualização",    lambda m: m.updated_at.strftime("%d/%m/%Y %H:%M") if m.updated_at else ""),
+}
+
+
+class MedicoRelatorioView(APIView):
+    permission_classes = [IsAdminOnly]
+
+    def get(self, request):
+        nome = request.query_params.get("nome", "relatorio_medicos").strip() or "relatorio_medicos"
+        fields_param = request.query_params.get("fields", "")
+        status_param = request.query_params.get("status", "")
+        situacao = request.query_params.get("situacao", "")
+
+        valid_fields = [f for f in fields_param.split(",") if f in FIELD_MAP]
+        if not valid_fields:
+            valid_fields = list(FIELD_MAP.keys())
+
+        qs = Medico.objects.select_related("user").prefetch_related("especialidades")
+        if status_param:
+            statuses = [s.strip() for s in status_param.split(",") if s.strip()]
+            if statuses:
+                qs = qs.filter(status__in=statuses)
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
+        safe_name = "".join(c if c.isalnum() or c in " _-" else "_" for c in nome)
+        response["Content-Disposition"] = f'attachment; filename="{safe_name}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow([FIELD_MAP[f][0] for f in valid_fields])
+
+        for medico in qs:
+            if situacao == "completo" and not medico.cadastro_completo():
+                continue
+            if situacao == "incompleto" and medico.cadastro_completo():
+                continue
+            writer.writerow([FIELD_MAP[f][1](medico) for f in valid_fields])
+
+        return response
 
 
 class MedicoListCreateView(generics.ListCreateAPIView):
