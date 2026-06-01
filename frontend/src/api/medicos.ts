@@ -34,6 +34,11 @@ export const addComprovante = (medicoId: number, data: FormData) =>
 export const deleteComprovante = (medicoId: number, comprovanteId: number) =>
   api.delete(`/medicos/${medicoId}/comprovantes/${comprovanteId}/`);
 
+export const updateComprovante = (medicoId: number, comprovanteId: number, data: FormData) =>
+  api.patch<MedicoEspecialidade>(`/medicos/${medicoId}/comprovantes/${comprovanteId}/`, data, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }).then((r) => r.data);
+
 export async function exportarRelatorio(params: {
   nome: string;
   fields: string[];

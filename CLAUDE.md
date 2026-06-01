@@ -119,6 +119,7 @@ frontend/src/
 | PATCH | `{id}/` | Edição (dono ou staff) — `multipart/form-data` para arquivos |
 | DELETE | `{id}/` | Exclui médico inativo — admin only |
 | GET/POST | `{id}/comprovantes/` | Lista / adiciona comprovante de especialidade |
+| PATCH | `{id}/comprovantes/{cid}/` | Edita comprovante de especialidade (`rqe_numero`, `sem_rqe`, `comprovante`) — dono ou staff |
 | DELETE | `{id}/comprovantes/{cid}/` | Remove comprovante de especialidade |
 | GET/POST | `especialidades/` | Especialidades disponíveis |
 | GET | `relatorio/` | Exporta CSV com campos/filtros selecionados — admin only |

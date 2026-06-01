@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import FileUploadField from './FileUploadField';
-import { getEspecialidades, addComprovante, deleteComprovante } from '../api/medicos';
+import { getEspecialidades, addComprovante, deleteComprovante, updateComprovante } from '../api/medicos';
 import type { Medico, Especialidade, MedicoEspecialidade } from '../types';
 
 const UF_LIST = [
@@ -66,6 +66,12 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
   const [novoRqe, setNovoRqe] = useState('');
   const [semRqe, setSemRqe] = useState(false);
   const [addingComp, setAddingComp] = useState(false);
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editRqe, setEditRqe] = useState('');
+  const [editSemRqe, setEditSemRqe] = useState(false);
+  const [editArquivo, setEditArquivo] = useState<File | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
   // Documentos
@@ -181,6 +187,39 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
       toast.success('Comprovante removido.');
     } catch {
       toast.error('Erro ao remover comprovante.');
+    }
+  };
+
+  const handleStartEdit = (c: MedicoEspecialidade) => {
+    setEditingId(c.id);
+    setEditRqe(c.rqe_numero);
+    setEditSemRqe(c.sem_rqe);
+    setEditArquivo(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditRqe('');
+    setEditSemRqe(false);
+    setEditArquivo(null);
+  };
+
+  const handleSaveEdit = async (comprovanteId: number) => {
+    if (!initial?.id) return;
+    setSavingEdit(true);
+    const fd = new FormData();
+    fd.append('rqe_numero', editSemRqe ? '' : editRqe);
+    fd.append('sem_rqe', String(editSemRqe));
+    if (editArquivo) fd.append('comprovante', editArquivo);
+    try {
+      const updated = await updateComprovante(initial.id, comprovanteId, fd);
+      setComprovantes((prev) => prev.map((c) => (c.id === comprovanteId ? updated : c)));
+      handleCancelEdit();
+      toast.success('Especialidade atualizada!');
+    } catch {
+      toast.error('Erro ao atualizar especialidade.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -345,6 +384,63 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
             {comprovantes.length > 0 ? (
               <div className="space-y-2 mb-4">
                 {comprovantes.map((c) => {
+                  const isEditing = editingId === c.id;
+                  if (isEditing) {
+                    return (
+                      <div key={c.id} className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-3 space-y-3">
+                        <p className="text-xs font-semibold text-amber-800">
+                          Editando: <span className="font-bold">{c.especialidade_nome}</span>
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className={labelCls}>Número do RQE</label>
+                            <input
+                              type="text"
+                              className={inputCls}
+                              placeholder="Ex: 12345"
+                              value={editRqe}
+                              disabled={editSemRqe}
+                              onChange={(e) => setEditRqe(e.target.value)}
+                            />
+                            <label className="flex items-center gap-2 mt-1 text-xs text-slate-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={editSemRqe}
+                                onChange={(e) => { setEditSemRqe(e.target.checked); if (e.target.checked) setEditRqe(''); }}
+                              />
+                              Não tenho RQE
+                            </label>
+                          </div>
+                          <FileUploadField
+                            label="Comprovante (substitui o atual)"
+                            name={`edit_comprovante_${c.id}`}
+                            accept=".pdf,image/*"
+                            currentUrl={c.comprovante ?? undefined}
+                            onChange={setEditArquivo}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            disabled={savingEdit || (!editRqe.trim() && !editSemRqe)}
+                            onClick={() => handleSaveEdit(c.id)}
+                            className="bg-green-600 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-green-700 disabled:opacity-50 transition"
+                          >
+                            {savingEdit ? 'Salvando...' : 'Salvar'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={savingEdit}
+                            onClick={handleCancelEdit}
+                            className="border border-slate-300 text-slate-600 text-xs px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   const esp = especialidades.find((e) => e.id === c.especialidade);
                   return (
                     <div key={c.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
@@ -368,13 +464,22 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
                         )}
                       </div>
                       {initial?.id && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteComprovante(c.id)}
-                          className="text-red-500 hover:text-red-700 text-xs"
-                        >
-                          Remover
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEdit(c)}
+                            className="text-blue-500 hover:text-blue-700 text-xs"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteComprovante(c.id)}
+                            className="text-red-500 hover:text-red-700 text-xs"
+                          >
+                            Remover
+                          </button>
+                        </div>
                       )}
                     </div>
                   );

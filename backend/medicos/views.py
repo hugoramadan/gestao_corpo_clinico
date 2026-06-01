@@ -1,7 +1,7 @@
 import csv
 
 from django.http import HttpResponse
-from rest_framework import status, generics, filters
+from rest_framework import status, generics, filters, mixins
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -203,7 +203,7 @@ class ComprovantesListCreateView(generics.ListCreateAPIView):
         serializer.save(medico=medico)
 
 
-class ComprovantesDestroyView(generics.DestroyAPIView):
+class ComprovantesDetailView(mixins.UpdateModelMixin, mixins.DestroyModelMixin, generics.GenericAPIView):
     serializer_class = MedicoEspecialidadeSerializer
 
     def get_permissions(self):
@@ -216,9 +216,14 @@ class ComprovantesDestroyView(generics.DestroyAPIView):
         obj = generics.get_object_or_404(
             MedicoEspecialidade, pk=self.kwargs["cid"], medico__pk=self.kwargs["pk"]
         )
-        # verifica permissão no médico pai
         self.check_object_permissions(self.request, obj.medico)
         return obj
+
+    def patch(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
 
 
 class EspecialidadeListCreateView(generics.ListCreateAPIView):

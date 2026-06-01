@@ -5,7 +5,7 @@ from .views import (
     MedicoRelatorioView,
     meu_cadastro_view,
     ComprovantesListCreateView,
-    ComprovantesDestroyView,
+    ComprovantesDetailView,
     EspecialidadeListCreateView,
 )
 
@@ -15,6 +15,6 @@ urlpatterns = [
     path("relatorio/", MedicoRelatorioView.as_view(), name="medico-relatorio"),
     path("<int:pk>/", MedicoDetailView.as_view(), name="medico-detail"),
     path("<int:pk>/comprovantes/", ComprovantesListCreateView.as_view(), name="comprovante-list-create"),
-    path("<int:pk>/comprovantes/<int:cid>/", ComprovantesDestroyView.as_view(), name="comprovante-destroy"),
+    path("<int:pk>/comprovantes/<int:cid>/", ComprovantesDetailView.as_view(), name="comprovante-detail"),
     path("especialidades/", EspecialidadeListCreateView.as_view(), name="especialidade-list-create"),
 ]
