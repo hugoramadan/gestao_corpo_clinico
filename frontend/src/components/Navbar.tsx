@@ -51,6 +51,11 @@ export default function Navbar() {
             </Link>
           )}
           {isRole('admin') && (
+            <Link to="/relatorios" className="text-sm hover:underline">
+              Relatórios
+            </Link>
+          )}
+          {isRole('admin') && (
             <Link to="/configuracoes" className="text-sm hover:underline">
               Configurações
             </Link>
@@ -114,6 +119,11 @@ export default function Navbar() {
           {isRole('admin') && (
             <Link to="/usuarios" onClick={closeMenu} className="text-sm py-2 hover:bg-white/10 px-2 rounded transition">
               Usuários
+            </Link>
+          )}
+          {isRole('admin') && (
+            <Link to="/relatorios" onClick={closeMenu} className="text-sm py-2 hover:bg-white/10 px-2 rounded transition">
+              Relatórios
             </Link>
           )}
           {isRole('admin') && (
