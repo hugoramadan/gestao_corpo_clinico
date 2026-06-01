@@ -63,6 +63,8 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
 
   const [novoEsp, setNovoEsp] = useState<number | ''>('');
   const [novoArquivo, setNovoArquivo] = useState<File | null>(null);
+  const [novoRqe, setNovoRqe] = useState('');
+  const [semRqe, setSemRqe] = useState(false);
   const [addingComp, setAddingComp] = useState(false);
 
   const [fotoPerfil, setFotoPerfil] = useState<File | null>(null);
@@ -154,11 +156,15 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
     const fd = new FormData();
     fd.append('especialidade', String(novoEsp));
     if (novoArquivo) fd.append('comprovante', novoArquivo);
+    fd.append('rqe_numero', novoRqe);
+    fd.append('sem_rqe', String(semRqe));
     try {
       const novo = await addComprovante(initial.id, fd);
       setComprovantes((prev) => [...prev, novo]);
       setNovoEsp('');
       setNovoArquivo(null);
+      setNovoRqe('');
+      setSemRqe(false);
       toast.success('Comprovante adicionado!');
     } catch {
       toast.error('Erro ao adicionar comprovante.');
@@ -344,6 +350,12 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
                     <div key={c.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
                       <div>
                         <span className="text-sm font-medium">{c.especialidade_nome || esp?.nome}</span>
+                        {c.rqe_numero
+                          ? <span className="text-xs text-slate-500 ml-2">RQE: {c.rqe_numero}</span>
+                          : c.sem_rqe
+                            ? <span className="text-xs text-slate-400 ml-2">Sem RQE</span>
+                            : null
+                        }
                         {c.comprovante && (
                           <a
                             href={c.comprovante}
@@ -388,6 +400,25 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
                         <option key={e.id} value={e.id}>{e.nome}</option>
                       ))}
                   </select>
+                  <div>
+                    <label className={labelCls}>Número do RQE</label>
+                    <input
+                      type="text"
+                      className={inputCls}
+                      placeholder="Ex: 12345"
+                      value={novoRqe}
+                      disabled={semRqe}
+                      onChange={(e) => setNovoRqe(e.target.value)}
+                    />
+                    <label className="flex items-center gap-2 mt-1 text-xs text-slate-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={semRqe}
+                        onChange={(e) => { setSemRqe(e.target.checked); if (e.target.checked) setNovoRqe(''); }}
+                      />
+                      Não tenho RQE
+                    </label>
+                  </div>
                   <FileUploadField
                     label="Comprovante"
                     name="novo_comprovante"
@@ -397,7 +428,7 @@ export default function MedicoForm({ initial, onSubmit, onCancel, isAdmin }: Pro
                 </div>
                 <button
                   type="button"
-                  disabled={!novoEsp || addingComp}
+                  disabled={!novoEsp || addingComp || (!novoRqe.trim() && !semRqe)}
                   onClick={handleAddComprovante}
                   className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
                 >

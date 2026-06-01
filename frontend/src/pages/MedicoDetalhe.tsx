@@ -174,6 +174,8 @@ export default function MedicoDetalhe() {
               {medico.comprovantes_especialidade.map((c) => (
                 <div key={c.id} className="flex items-center gap-2 border border-slate-200 bg-slate-50 px-3 py-1.5 rounded-lg">
                   <span className="text-sm font-medium">{c.especialidade_nome}</span>
+                  {c.rqe_numero && <span className="text-xs text-slate-500">RQE: {c.rqe_numero}</span>}
+                  {!c.rqe_numero && c.sem_rqe && <span className="text-xs text-slate-400">Sem RQE</span>}
                   {c.comprovante && (
                     <a href={mediaUrl(c.comprovante)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">
                       📎

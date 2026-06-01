@@ -41,6 +41,8 @@ export interface MedicoEspecialidade {
   especialidade: number;
   especialidade_nome: string;
   comprovante: string | null;
+  rqe_numero: string;
+  sem_rqe: boolean;
   data_upload: string;
 }
 
