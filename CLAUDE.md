@@ -162,15 +162,15 @@ frontend/src/
 - Criado também via `UserCreateSerializer` quando role não inclui `medico`
 
 ### Medico (`medicos/models.py`)
-- `user`: FK para CustomUser (nullable — médicos sem login têm `user=null`)
+- `user`: OneToOneField para CustomUser (`null=True`, `on_delete=SET_NULL`, `related_name="medico"`) — médicos sem login têm `user=null`; excluir o User preserva o Medico
 - `cpf`: `null=True, blank=True, unique=True` — admin pode criar sem CPF; NULL não colide com UNIQUE
 - **Campos pessoais:** `nome_completo`, `cpf`, `data_nascimento`, `rg_numero`, `estado_civil`, `foto_perfil`, `email`, `telefone`
 - **Endereço:** `cep`, `logradouro`, `numero`, `complemento`, `bairro`, `cidade`, `estado`
 - **Formação:** `instituicao_formacao`, `ano_formatura`, `link_lattes`
 - **CRM:** `crm_numero`, `crm_estado`, ManyToMany `especialidades` via `MedicoEspecialidade`
 - **Financeiro:** `tipo_chave_pix` (cpf/cnpj/email/telefone/aleatoria), `chave_pix`
-- **Documentos (FileField):** `diploma`, `crm_doc`, `rg_cpf` (RG+CPF frente/verso), `cnh`, `comprovante_endereco`, `quitacao_crm`, `etica_crm`, `certidao_casamento`, `curriculo_lattes`
-- **Status:** `pendente` / `ativo` / `inativo`
+- **Documentos (FileField):** `diploma_medico`, `crm_doc`, `rg_cpf` (RG+CPF frente/verso), `cnh`, `comprovante_endereco`, `declaracao_quitacao_crm`, `etica_crm`, `certidao_casamento`, `curriculo_lattes`
+- **Status:** `pendente` / `ativo_com_contrato` / `ativo_sem_contrato` / `inativo` (migration 0010)
 - **Timestamps:** `created_at`, `updated_at`
 - `campos_pendentes()`: retorna lista de `{campo, label}` incompletos; certidão de casamento só obrigatória para `estado_civil` que comece com `"casado"`; exige ao menos 1 especialidade
 - `cadastro_completo()`: `len(campos_pendentes()) == 0`
