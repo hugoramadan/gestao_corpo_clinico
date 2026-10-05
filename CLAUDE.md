@@ -170,7 +170,7 @@ frontend/src/
 - **CRM:** `crm_numero`, `crm_estado`, ManyToMany `especialidades` via `MedicoEspecialidade`
 - **Financeiro:** `tipo_chave_pix` (cpf/cnpj/email/telefone/aleatoria), `chave_pix`
 - **Documentos (FileField):** `diploma_medico`, `crm_doc`, `rg_cpf` (RG+CPF frente/verso), `cnh`, `comprovante_endereco`, `declaracao_quitacao_crm`, `etica_crm`, `certidao_casamento`, `curriculo_lattes`
-- **Status:** `pendente` / `ativo` / `inativo`
+- **Status:** `pendente` / `ativo_com_contrato` / `ativo_sem_contrato` / `inativo` (migration 0010)
 - **Timestamps:** `created_at`, `updated_at`
 - `campos_pendentes()`: retorna lista de `{campo, label}` incompletos; certidão de casamento só obrigatória para `estado_civil` que comece com `"casado"`; exige ao menos 1 especialidade
 - `cadastro_completo()`: `len(campos_pendentes()) == 0`
