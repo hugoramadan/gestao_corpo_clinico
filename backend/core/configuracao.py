@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.cache import add_never_cache_headers
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -41,6 +42,13 @@ class ConfiguracaoSerializer(serializers.ModelSerializer):
 
 
 class ConfiguracaoView(APIView):
+    def get_authenticators(self):
+        # GET é público: não autentica, para que um token expirado enviado pelo
+        # navegador não transforme a leitura em 401
+        if self.request.method == "GET":
+            return []
+        return super().get_authenticators()
+
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
@@ -48,7 +56,10 @@ class ConfiguracaoView(APIView):
 
     def get(self, request):
         config = Configuracao.get()
-        return Response(ConfiguracaoSerializer(config, context={"request": request}).data)
+        response = Response(ConfiguracaoSerializer(config, context={"request": request}).data)
+        # Evita que o navegador reaproveite uma configuração antiga
+        add_never_cache_headers(response)
+        return response
 
     def patch(self, request):
         config = Configuracao.get()

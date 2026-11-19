@@ -18,13 +18,42 @@ const defaults: ConfigContextValue = {
   reload: () => {},
 };
 
+const CACHE_KEY = 'config_cache';
+
+interface CachedConfig {
+  nome: string;
+  subtitulo: string;
+  corPrimaria: string;
+  logoUrl: string | null;
+}
+
+// Última configuração recebida da API, para aplicar a personalização já no
+// primeiro render, sem esperar a requisição.
+function readCache(): CachedConfig | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as CachedConfig) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(cfg: CachedConfig) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cfg));
+  } catch {
+    // localStorage indisponível (ex: modo privado) — ignora
+  }
+}
+
 const ConfigContext = createContext<ConfigContextValue | undefined>(undefined);
 
 export function ConfigProvider({ children }: { children: React.ReactNode }) {
-  const [nome, setNome] = useState(defaults.nome);
-  const [subtitulo, setSubtitulo] = useState(defaults.subtitulo);
-  const [corPrimaria, setCorPrimaria] = useState(defaults.corPrimaria);
-  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [initial] = useState(() => readCache());
+  const [nome, setNome] = useState(initial?.nome ?? defaults.nome);
+  const [subtitulo, setSubtitulo] = useState(initial?.subtitulo ?? defaults.subtitulo);
+  const [corPrimaria, setCorPrimaria] = useState(initial?.corPrimaria ?? defaults.corPrimaria);
+  const [logoUrl, setLogoUrl] = useState<string | null>(initial?.logoUrl ?? null);
 
   const apply = (cor: string) => {
     document.documentElement.style.setProperty('--color-primary', cor);
@@ -33,20 +62,21 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   const load = () => {
     getConfig()
       .then((cfg) => {
+        const logo = cfg.logo ? mediaUrl(cfg.logo) : null;
         setNome(cfg.nome);
         setSubtitulo(cfg.subtitulo);
         setCorPrimaria(cfg.cor_primaria);
-        setLogoUrl(cfg.logo ? mediaUrl(cfg.logo) : null);
+        setLogoUrl(logo);
         apply(cfg.cor_primaria);
+        writeCache({ nome: cfg.nome, subtitulo: cfg.subtitulo, corPrimaria: cfg.cor_primaria, logoUrl: logo });
       })
       .catch(() => {
-        // Mantém defaults se API falhar (ex: offline)
-        apply(defaults.corPrimaria);
+        // Mantém o que já está aplicado (cache ou defaults) se a API falhar (ex: offline)
       });
   };
 
   useEffect(() => {
-    apply(defaults.corPrimaria);
+    apply(initial?.corPrimaria ?? defaults.corPrimaria);
     load();
   }, []);
 

@@ -136,7 +136,7 @@ frontend/src/
 ### Configuração (`/api/config/`)
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | `` | Retorna configuração atual — **público** (sem autenticação) |
+| GET | `` | Retorna configuração atual — **público**: `get_authenticators()` retorna `[]` no GET (token expirado não causa 401); resposta com `Cache-Control: no-store` |
 | PATCH | `` | Atualiza configuração — admin only; aceita `multipart/form-data` (logo) |
 
 > A configuração é um **singleton** (pk=1). Campos: `nome`, `subtitulo`, `cor_primaria`, `logo`. Para remover a logo, enviar `remover_logo=1` no payload.
@@ -257,7 +257,7 @@ frontend/src/
 - **Domínio:** hugoramadan.com.br
 - **Variáveis de ambiente:** `.env.prod` na raiz do projeto (não versionado)
 - **SSL:** Let's Encrypt — certificado em `/etc/letsencrypt/live/hugoramadan.com.br/`
-- **nginx.conf:** `nginx/nginx.conf` — `/static/` (30d cache), `/media/` (7d cache), `/api/` e `/admin/` proxy para gunicorn, `/` SPA fallback; `client_max_body_size 20M`
+- **nginx.conf:** `nginx/nginx.conf` — `/static/` (30d cache), `/media/` (7d cache), `/api/` e `/admin/` proxy para gunicorn, `/assets/` (bundles com hash: 1 ano, `immutable`), `/` SPA fallback com `Cache-Control: no-cache` (index.html sempre revalidado, evita carregar versão antiga do app); `client_max_body_size 50M`
 - **Frontend:** buildado dentro da imagem Docker do Nginx (multi-stage build em `nginx/Dockerfile`). Rebuild necessário após qualquer mudança no frontend ou no `nginx.conf`:
   ```bash
   docker compose -f docker-compose.prod.yml build --no-cache nginx && docker compose -f docker-compose.prod.yml up -d nginx
@@ -268,7 +268,7 @@ frontend/src/
   ```
   > **Atenção:** não basta fazer `git pull` no servidor — é obrigatório rebuildar a imagem, pois o backend usa `build:` e não volume mount. Código novo só entra depois do rebuild.
 - **Título da aba:** `frontend/index.html` — "Cadastro médico", sem favicon
-- **ConfigContext:** aplica `--color-primary` imediatamente com o valor padrão antes de carregar a API, evitando elementos invisíveis no carregamento inicial; tolera falha da API sem quebrar o app
+- **ConfigContext:** guarda a última configuração em `localStorage` (`config_cache`) e aplica `--color-primary`, nome, subtítulo e logo dela já no primeiro render (ou os defaults, se não houver cache); depois busca a API e atualiza. `getConfig()` usa axios puro, sem o interceptor JWT, para que token expirado não dispare refresh/redirect. Tolera falha da API sem quebrar o app
 
 ### Variáveis de ambiente relevantes (backend)
 | Variável | Uso |
